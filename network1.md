@@ -55,4 +55,30 @@
 ![이미지](./arppacket)
 
   #### 4. DDOS(작성자 생각)
-  - Attacker가 
+  - Attacker가 네트워크의 대역에 있는 모든 호스트들의 ARP table을 호스트 A의 <IP , MAC>으로 감염시키고, 특정 행동을 했을 때 계속해서 호스트 A에게 접속을 하게 되고 이 경우, 네트워크
+    규모가 클 경우, 하나의 사용자는 계속해서 많은 패킷을 받기 때문에 정상적으로 작동하기 어려울 것이다. 
+
+
+
+### 2. ARP cache table poisoning 실습
+
+
+#### vm의 환경 구축
+
+![이미지](./환경구축)
+
+위의 그림을 보면 Kali랑 Windows 7이 통신을 하려하는 데 Attacker가 중간에 ARP spoofing을 하여 Windows 7의 table을 공격한다. 
+
+- 초기 Windows 7 arp table 화면 
+
+![이미지](./WindowsArptable)
+
+
+
+
+
+
+
+
+
+
