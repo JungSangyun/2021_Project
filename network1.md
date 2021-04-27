@@ -13,12 +13,12 @@
   3. ARP reply를 받은 호스트 A는 <IP , MAC> 정보를 자신의 ARP 테이블에 저장을 한다. 이후 통신은 이 ARP table을 참고한 후 통신이 진행이 된다. 
   4. 이 table의 경우 일정 시간이 지나면 없어지므로 , 없어진 순간 다시 1번 과정부터 다시 실행이 된다. (table 형식은 아래 그림참고)
 
-![이미지](./arp table)
+![이미지](./arp table.PNG)
 
 
 #### ARP 패킷의 형식 
 
-![이미지](./arppacket)
+![이미지](./ARP packet.PNG)
 
 
 ### 1. ARP cache table poisoning
@@ -51,7 +51,7 @@
   #### 3. Man-in-the-middle
   - 동시에 두개의 호스트를 poisoning했을 경우에 두개의 호스트는 자신끼리 통신을 하고 있다고 생각하지만 중간의 공격자가 패킷을 받고 수신하면서 안의 내용을 볼 수 있다. (구조 아래 그림참고)
 
-![이미지](./arppacket)
+![이미지](./man_in_the_middle.PNG)
 
   #### 4. DDOS(작성자 생각)
   - Attacker가 네트워크의 대역에 있는 모든 호스트들의 ARP table을 호스트 A의 <IP , MAC>으로 감염시키고, 특정 행동을 했을 때 계속해서 호스트 A에게 접속을 하게 되고 이 경우, 네트워크
@@ -67,13 +67,13 @@
 
 #### vm의 환경 구축
 
-![이미지](./환경구축)
+![이미지](./환경구축.PNG)
 
 위의 그림을 보면 Kali랑 Windows 7이 통신을 하려하는 데 Attacker가 중간에 ARP spoofing을 하여 Windows 7의 table을 공격한다. 
 
 - 초기 Windows 7 arp table 화면 
 
-![이미지](./WindowsArptable.png)
+![이미지](./WindowsArptalbe.PNG)
 
 
 ### 3.Preventing ARP poisoning 
@@ -85,7 +85,7 @@
     - 기존의 위에서 봤던 ARP의 패킷의 헤더와는 다르게 아래 그림과 같은 형식이 패킷이 된다
         ※ 맨위의 magic으로 S-ARP 패킷임을 확인을 하고, 중앙 AKD를 통해서 공개키 알고리즘을 이용해서 서로의 ARP packet을 인증을 하는 형식으로 진행이 됨. 
         
-![이미지](./s-arp.png)
+![이미지](./s-arp.PNG)
 
 
   #### 3.2 `Preventing` Static Mac Entries 
@@ -109,7 +109,7 @@
 사실 ARP spoofing이라는 것이 네트워크를 해킹해서 상대방의 정보를 빼내는 `창` 같은 존재가 될 수도 있지만, 안전한 인트라넷을 구현하기 위한 `방패` 의 역할도 할 수 있다고 생각한다. 
 그래서 ARP spoofing을 통해서 안전한 인트라넷을 구축해봤다. 
 
-![이미지](./intranet.png)
+![이미지](./intranet.PNG)
 
 
 - 위의 있는 구조 설명 
