@@ -107,8 +107,35 @@
 ### 4. ARP spoofing을 이용한 안전한 인트라넷 구축하기 
 
 사실 ARP spoofing이라는 것이 네트워크를 해킹해서 상대방의 정보를 빼내는 `창` 같은 존재가 될 수도 있지만, 안전한 인트라넷을 구현하기 위한 `방패` 의 역할도 할 수 있다고 생각한다. 
-그래서 ARP spoofing을 통해서 안전한 인트라넷을 구축해보기로 했다. 
+그래서 ARP spoofing을 통해서 안전한 인트라넷을 구축해봤다. 
 
+![이미지](./intranet.png)
+
+
+- 위의 있는 구조 설명 
+  1. 중앙서버 : 컴퓨터를 차단하는 각종 정책을 가지고 있으며, 차단 서버가 보내온 정보를 자신의 정책과 맞지 않는 경우, 차단서버에게 차단을 명령한다. 또한 각 PC가 전달하는 정보가 정책에 위반하는 경우가 있다면 이를 차단한다.  
+  2. 차단서버 : 일정 네트워크 대역을 관제하고 있고 정책서버가 차단 서버에게 차단을 명령하면, 해당 PC는 인트라넷이용이 불가능 하다. 
+  3. 각 PC   : 각 PC는 하나의 프로그램을 깔고, 그 프로그램은 PC의 IP정보, MAC정보 같은 하드웨어적 정보와 , 각 종 소프트웨어에 있는 정보들을 중앙서버에 전달을 한다. 
+
+
+- 허용되지 않은 사용자가 인트라넷을 사용하려는 경우!
+  1. 허용되지 않은 사용자가 인트라넷을 사용하기 위해서 랜선을 자신의 laptop에 연결하고 다른 사용자들의 ARP정보를 얻기 위해 Broadcast함 
+  2. 특별한 보안조치가 되어 있지 않다고 가정을 하면 일반 사용자들은 자신의 <IP, MAC> 주소를 허용되지 않은 사용자에게 전달을 함 
+  3. 이때 같은 네트워크 대역에 있는 차단서버가 이 broadcast에 있는 <IP, MAC>을 정책서버에게 전달
+  4. 정책서버는 허용된 <IP, MAC>인지를 확인하고, 허용되지 않았을 경우에 차단서버에 차단을 명령 
+  5. 차단 서버는 정책서버로 부터 차단 명령이 내려오면, 이 때 차단서버는 자신의 ARP 정보포함해서, 네트워크 대역에 있는 IP에 해당하는 모든 MAC들을 차단 서버의 MAC으로 바꾸는 ARP poisoning을 허용되지 않은 사용자의 장비로 패킷을 보낸다.
+  6. 결국 허용되지 않은 사용자의 장비는 차단서버의 특정 사이트만 접속 할 수 있게 되고, 인트라넷을 이용하지 못하게 된다. 
+
+위의 허용되지 않은 사용자가 인트라넷을 사용하는 경우, 뿐만 아니라, 기존 사용자가 불법 소프트웨어를 입수를 했다면, 이역시 차단서버가 ARP poisoning을 이용해서 해당 PC의 ARP table을 모두 차단 
+서버로 향하게 한다. 
+
+
+### 5. Reference
+
+[1] Cristina L. Abad , Rafael I. Bonilla(2007) "An Analysis on the Schemes for Detecting and Preventing ARP Cache Poisoning Attacks"  27th International Conference on Distributed Computing Systems Workshops (ICDCSW'07)
+[2] Vivek Ramachandran, and Sukumar Nandi(2005) "Detecting ARP Spoofing: An Active Technique" First Internation Conference, ICISS 2005 Kolkata, India, December 2005 Proceedings
+[3] Poonam Pandey(2013) "Prevention of ARP Spoofing: A Probe Packet based Technique" 2013 3rd IEEE International Advance Computing Conference (IACC)
+[4] D. Bruschi, A. Ornaghi, E. Rosti(2003) "S-ARP: a Secure Address Resolution Protocol" 19th Annual Computer Security Applications Conference, 2003. Proceedings.
 
 
 
