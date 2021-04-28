@@ -67,13 +67,35 @@
 
 #### vm의 환경 구축
 
-![이미지](./환경구축.PNG)
+
 
 위의 그림을 보면 Kali랑 Windows 7이 통신을 하려하는 데 Attacker가 중간에 ARP spoofing을 하여 Windows 7의 table을 공격한다. 
 
 - 초기 Windows 7 arp table 화면 
 
 ![이미지](./WindowsArptalbe.PNG)
+
+Attacker는 호스트 A(Windows 7)의 arp table에 적혀있는 gateway의 정보를 자신의 <IP, MAC>으로 수정을 해서 호스트 A의 패킷을 받아볼 수 있다. 
+
+다음과 같이 attacker의 호스트에서 공격을 시작한다. 
+
+> arpspoof -i eth0 192.168.56.101 -t 192.168.56.100
+
+다음의 명령어를 치면 다음과 같이 Windows 7의 arp table이 수정이된다.
+
+![이미지](./changedarptable.PNG)
+
+그러면 원래 gate의 MAC주소가 192.168.56.102의 MAC으로 수정된 것을 알 수 있다.(원래는 192.168.56.100의 MAC만 바뀌고 192.168.56.102의 정보는 없어야 하는데 192.168.56.102의 MAC을 보여주기 위해서 다음과 같이 세팅)
+
+이상태에서 Window 7에서 ping gateway로 ping을 치면 실패 
+
+![이미지](./pingfailure.PNG)
+
+이번에는 똑바로 arp table을 수정하고 pingtest하면 kali에서 Tcpdump 열고 확인하면 다음과 같이 확인 할 수 있다. 
+
+
+![이미지](./tcpdump.PNG)
+
 
 
 ### 3.Preventing ARP poisoning 
