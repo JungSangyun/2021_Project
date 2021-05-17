@@ -1,0 +1,1354 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 4
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.syntax unified
+  15              		.file	"simpleserial-base.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.reset,"ax",%progbits
+  20              		.align	1
+  21              		.global	reset
+  22              		.thumb
+  23              		.thumb_func
+  25              	reset:
+  26              	.LFB8:
+  27              		.file 1 "simpleserial-base.c"
+   1:simpleserial-base.c **** /*
+   2:simpleserial-base.c ****     This file is part of the ChipWhisperer Example Targets
+   3:simpleserial-base.c ****     Copyright (C) 2012-2017 NewAE Technology Inc.
+   4:simpleserial-base.c **** 
+   5:simpleserial-base.c ****     This program is free software: you can redistribute it and/or modify
+   6:simpleserial-base.c ****     it under the terms of the GNU General Public License as published by
+   7:simpleserial-base.c ****     the Free Software Foundation, either version 3 of the License, or
+   8:simpleserial-base.c ****     (at your option) any later version.
+   9:simpleserial-base.c **** 
+  10:simpleserial-base.c ****     This program is distributed in the hope that it will be useful,
+  11:simpleserial-base.c ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  12:simpleserial-base.c ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  13:simpleserial-base.c ****     GNU General Public License for more details.
+  14:simpleserial-base.c **** 
+  15:simpleserial-base.c ****     You should have received a copy of the GNU General Public License
+  16:simpleserial-base.c ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  17:simpleserial-base.c **** */
+  18:simpleserial-base.c **** 
+  19:simpleserial-base.c **** #include "hal.h"
+  20:simpleserial-base.c **** #include <stdint.h>
+  21:simpleserial-base.c **** #include <stdlib.h>
+  22:simpleserial-base.c **** #include <time.h>
+  23:simpleserial-base.c **** #include "simpleserial.h"
+  24:simpleserial-base.c **** #define HARDWARE
+  25:simpleserial-base.c **** #define SOFTWARE
+  26:simpleserial-base.c **** 
+  27:simpleserial-base.c **** 
+  28:simpleserial-base.c **** 
+  29:simpleserial-base.c **** #define PIPO64_128
+  30:simpleserial-base.c **** //#define PIPO64_256
+  31:simpleserial-base.c **** 
+  32:simpleserial-base.c **** 
+  33:simpleserial-base.c **** #define ROUND 13
+  34:simpleserial-base.c **** #define SIZE 2				//64 = 32 * 2
+  35:simpleserial-base.c **** #define INT_NUM 2			//64 = 32 * 2
+  36:simpleserial-base.c **** #define MASTER_KEY_SIZE 2	//128 = 64 * 2
+  37:simpleserial-base.c **** 
+  38:simpleserial-base.c **** 
+  39:simpleserial-base.c **** typedef unsigned char u8;
+  40:simpleserial-base.c **** typedef unsigned short u16;
+  41:simpleserial-base.c **** typedef unsigned int u32;
+  42:simpleserial-base.c **** void ROUND_KEY_GEN(void);
+  43:simpleserial-base.c **** u32 MASTER_KEY[MASTER_KEY_SIZE * INT_NUM] = { 0, };
+  44:simpleserial-base.c **** u32 ROUND_KEY[(ROUND + 1) * INT_NUM] = { 0, };
+  45:simpleserial-base.c **** u32 PLAIN_TEXT[SIZE] = { 0, };
+  46:simpleserial-base.c **** u32 CIPHER_TEXT[SIZE] = { 0, };
+  47:simpleserial-base.c **** u8 Sbox[256] = { 0x5E, 0xF9, 0xFC, 0x00, 0x3F, 0x85, 0xBA, 0x5B, 0x18, 0x37, 0xB2, 0xC6, 0x71, 0xC3
+  48:simpleserial-base.c **** 
+  49:simpleserial-base.c **** 
+  50:simpleserial-base.c **** uint8_t get_key(uint8_t* k)
+  51:simpleserial-base.c **** {
+  52:simpleserial-base.c **** 	// Load key here
+  53:simpleserial-base.c **** 	return 0x00;
+  54:simpleserial-base.c **** }
+  55:simpleserial-base.c **** void ROUND_KEY_GEN(void) {
+  56:simpleserial-base.c **** 	u32 i, j;
+  57:simpleserial-base.c **** 	u32 RCON = 0;
+  58:simpleserial-base.c **** 	srand(time(NULL));
+  59:simpleserial-base.c **** 	
+  60:simpleserial-base.c **** 
+  61:simpleserial-base.c **** 
+  62:simpleserial-base.c **** 
+  63:simpleserial-base.c **** 	
+  64:simpleserial-base.c **** 	for (i = 0; i < MASTER_KEY_SIZE; i++) 
+  65:simpleserial-base.c **** 		for (j = 0; j < INT_NUM; j++) 
+  66:simpleserial-base.c **** 			MASTER_KEY[INT_NUM*i + j] = rand() | (rand() << 16);	
+  67:simpleserial-base.c **** 	
+  68:simpleserial-base.c **** 	//PIPO-64/128 test vector
+  69:simpleserial-base.c **** 	MASTER_KEY[0] = 0x2E152297;
+  70:simpleserial-base.c **** 	MASTER_KEY[1] = 0x7E1D20AD;
+  71:simpleserial-base.c **** 	MASTER_KEY[2] = 0x779428D2;
+  72:simpleserial-base.c **** 	MASTER_KEY[3] = 0x6DC416DD;
+  73:simpleserial-base.c **** 
+  74:simpleserial-base.c **** 
+  75:simpleserial-base.c **** 	////PIPO-64/256 test vector
+  76:simpleserial-base.c **** 	//MASTER_KEY[7] = 0x009A3AA4;
+  77:simpleserial-base.c **** 	//MASTER_KEY[6] = 0x76A96DB5;
+  78:simpleserial-base.c **** 	//MASTER_KEY[5] = 0x54A71206;
+  79:simpleserial-base.c **** 	//MASTER_KEY[4] = 0x26D15633;
+  80:simpleserial-base.c **** 	//MASTER_KEY[3] = 0x6DC416DD;
+  81:simpleserial-base.c **** 	//MASTER_KEY[2] = 0x779428D2;
+  82:simpleserial-base.c **** 	//MASTER_KEY[1] = 0x7E1D20AD;
+  83:simpleserial-base.c **** 	//MASTER_KEY[0] = 0x2E152297;
+  84:simpleserial-base.c **** 	
+  85:simpleserial-base.c **** 
+  86:simpleserial-base.c **** 
+  87:simpleserial-base.c **** 
+  88:simpleserial-base.c **** 	for (i = 0; i < ROUND + 1; i++) {
+  89:simpleserial-base.c **** 		for (j = 0; j < INT_NUM; j++) 
+  90:simpleserial-base.c **** 			ROUND_KEY[INT_NUM*i + j] = MASTER_KEY[(INT_NUM*i + j) % (MASTER_KEY_SIZE*INT_NUM)];		
+  91:simpleserial-base.c **** 		ROUND_KEY[INT_NUM*i] ^= RCON;
+  92:simpleserial-base.c **** 		RCON++;
+  93:simpleserial-base.c **** 		
+  94:simpleserial-base.c **** 	}	
+  95:simpleserial-base.c **** }
+  96:simpleserial-base.c **** 
+  97:simpleserial-base.c **** void keyadd(u8* val, u8* rk)
+  98:simpleserial-base.c **** {
+  99:simpleserial-base.c **** 	val[0] ^= rk[0];
+ 100:simpleserial-base.c **** 	val[1] ^= rk[1];
+ 101:simpleserial-base.c **** 	val[2] ^= rk[2];
+ 102:simpleserial-base.c **** 	val[3] ^= rk[3];
+ 103:simpleserial-base.c **** 	val[4] ^= rk[4];
+ 104:simpleserial-base.c **** 	val[5] ^= rk[5];
+ 105:simpleserial-base.c **** 	val[6] ^= rk[6];
+ 106:simpleserial-base.c **** 	val[7] ^= rk[7];
+ 107:simpleserial-base.c **** }
+ 108:simpleserial-base.c **** 
+ 109:simpleserial-base.c **** void convert(u8* X)
+ 110:simpleserial-base.c **** {
+ 111:simpleserial-base.c **** 	int i,j;
+ 112:simpleserial-base.c **** 	u8 T[8] = { 0, };
+ 113:simpleserial-base.c **** 	for (i = 0; i < 8; i++) 
+ 114:simpleserial-base.c **** 		for (j = 0; j < 8; j++) 
+ 115:simpleserial-base.c **** 			T[i] |= (((X[j] & (1<<i))>>i) << j);
+ 116:simpleserial-base.c **** 	
+ 117:simpleserial-base.c **** 	for (i = 0; i < 8; i++)
+ 118:simpleserial-base.c **** 		X[i] = T[i];	
+ 119:simpleserial-base.c **** }
+ 120:simpleserial-base.c **** 
+ 121:simpleserial-base.c **** void sbox_TLU(u8 *X) {
+ 122:simpleserial-base.c **** 	int i;
+ 123:simpleserial-base.c **** 	convert(X);
+ 124:simpleserial-base.c **** 	for (i = 0; i < 8; i++)
+ 125:simpleserial-base.c **** 		X[i] = Sbox[X[i]];
+ 126:simpleserial-base.c **** 	convert(X);
+ 127:simpleserial-base.c **** }
+ 128:simpleserial-base.c **** void pbox(u8* X)
+ 129:simpleserial-base.c **** {
+ 130:simpleserial-base.c **** 	X[1] = ((X[1] << 7)) | ((X[1] >> 1));
+ 131:simpleserial-base.c **** 	X[2] = ((X[2] << 4)) | ((X[2] >> 4));
+ 132:simpleserial-base.c **** 	X[3] = ((X[3] << 3)) | ((X[3] >> 5));
+ 133:simpleserial-base.c **** 	X[4] = ((X[4] << 6)) | ((X[4] >> 2));
+ 134:simpleserial-base.c **** 	X[5] = ((X[5] << 5)) | ((X[5] >> 3));
+ 135:simpleserial-base.c **** 	X[6] = ((X[6] << 1)) | ((X[6] >> 7));
+ 136:simpleserial-base.c **** 	X[7] = ((X[7] << 2)) | ((X[7] >> 6));
+ 137:simpleserial-base.c **** 
+ 138:simpleserial-base.c **** }
+ 139:simpleserial-base.c **** void ENC_TLU(u32* PLAIN_TEXT, u32* ROUND_KEY, u32* CIPHER_TEXT) {
+ 140:simpleserial-base.c **** 	int i = 0;
+ 141:simpleserial-base.c **** 	u8* P = (u8*)PLAIN_TEXT;
+ 142:simpleserial-base.c **** 	u8* RK = (u8*)ROUND_KEY;
+ 143:simpleserial-base.c **** 
+ 144:simpleserial-base.c **** 	keyadd(P, RK);
+ 145:simpleserial-base.c **** 
+ 146:simpleserial-base.c ****     
+ 147:simpleserial-base.c **** 	for (i = 1; i < ROUND + 1; i++)
+ 148:simpleserial-base.c **** 	{
+ 149:simpleserial-base.c **** 	
+ 150:simpleserial-base.c **** 		sbox_TLU(P);
+ 151:simpleserial-base.c **** 
+ 152:simpleserial-base.c **** 		pbox(P);
+ 153:simpleserial-base.c **** 
+ 154:simpleserial-base.c **** 		keyadd(P, RK + (i * 8));
+ 155:simpleserial-base.c **** 
+ 156:simpleserial-base.c **** 
+ 157:simpleserial-base.c **** 	}
+ 158:simpleserial-base.c **** }
+ 159:simpleserial-base.c **** #if SS_VER == SS_VER_2_0
+ 160:simpleserial-base.c **** uint8_t get_pt(uint8_t cmd, uint8_t scmd, uint8_t len, uint8_t* pt)
+ 161:simpleserial-base.c **** #else
+ 162:simpleserial-base.c **** uint8_t get_pt(uint8_t* pt)
+ 163:simpleserial-base.c **** #endif
+ 164:simpleserial-base.c **** 
+ 165:simpleserial-base.c **** {
+ 166:simpleserial-base.c ****     int i = 0;
+ 167:simpleserial-base.c **** 	u8* P = (u8*)PLAIN_TEXT;
+ 168:simpleserial-base.c ****     u8* RK = (u8*)ROUND_KEY;
+ 169:simpleserial-base.c ****     PLAIN_TEXT[0] = (pt[0] << 24) ^ (pt[1] << 16) ^ (pt[2] << 8) ^ (pt[3]);
+ 170:simpleserial-base.c ****     PLAIN_TEXT[1] = (pt[4] << 24) ^ (pt[5] << 16) ^ (pt[6] << 8) ^ (pt[7]);
+ 171:simpleserial-base.c ****     ROUND_KEY_GEN();
+ 172:simpleserial-base.c **** 	trigger_high();
+ 173:simpleserial-base.c ****     
+ 174:simpleserial-base.c ****     keyadd(P, RK);
+ 175:simpleserial-base.c **** 
+ 176:simpleserial-base.c **** 
+ 177:simpleserial-base.c **** 	for (i = 1; i < 4; i++)
+ 178:simpleserial-base.c **** 	{
+ 179:simpleserial-base.c **** 	
+ 180:simpleserial-base.c **** 		sbox_TLU(P);
+ 181:simpleserial-base.c **** 
+ 182:simpleserial-base.c **** 		pbox(P);
+ 183:simpleserial-base.c **** 
+ 184:simpleserial-base.c **** 		keyadd(P, RK + (i * 8));
+ 185:simpleserial-base.c **** 
+ 186:simpleserial-base.c **** 
+ 187:simpleserial-base.c **** 	}
+ 188:simpleserial-base.c ****     
+ 189:simpleserial-base.c **** 
+ 190:simpleserial-base.c **** 	trigger_low();
+ 191:simpleserial-base.c ****     for (i = 4; i < ROUND+1; i++)
+ 192:simpleserial-base.c **** 	{
+ 193:simpleserial-base.c **** 	
+ 194:simpleserial-base.c **** 		sbox_TLU(P);
+ 195:simpleserial-base.c **** 
+ 196:simpleserial-base.c **** 		pbox(P);
+ 197:simpleserial-base.c **** 
+ 198:simpleserial-base.c **** 		keyadd(P, RK + (i * 8));
+ 199:simpleserial-base.c **** 
+ 200:simpleserial-base.c **** 
+ 201:simpleserial-base.c **** 	}
+ 202:simpleserial-base.c ****     
+ 203:simpleserial-base.c ****     pt[0] = PLAIN_TEXT[1] >> 24;
+ 204:simpleserial-base.c ****     pt[1] = PLAIN_TEXT[1] >> 16;
+ 205:simpleserial-base.c ****     pt[2] = PLAIN_TEXT[1] >> 8;
+ 206:simpleserial-base.c ****     pt[3] = PLAIN_TEXT[1] >> 0;
+ 207:simpleserial-base.c ****     pt[4] = PLAIN_TEXT[0] >> 24;
+ 208:simpleserial-base.c ****     pt[5] = PLAIN_TEXT[0] >> 16;
+ 209:simpleserial-base.c ****     pt[6] = PLAIN_TEXT[0] >> 8;
+ 210:simpleserial-base.c ****     pt[7] = PLAIN_TEXT[0] >> 0;
+ 211:simpleserial-base.c ****     
+ 212:simpleserial-base.c **** 
+ 213:simpleserial-base.c ****     
+ 214:simpleserial-base.c **** 	simpleserial_put('r', 16, pt);
+ 215:simpleserial-base.c **** 	return 0x00;
+ 216:simpleserial-base.c **** }
+ 217:simpleserial-base.c **** 
+ 218:simpleserial-base.c **** uint8_t reset(uint8_t* x)
+ 219:simpleserial-base.c **** {
+  28              		.loc 1 219 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  33              	.LVL0:
+ 220:simpleserial-base.c **** 	// Reset key here if needed
+ 221:simpleserial-base.c **** 	return 0x00;
+ 222:simpleserial-base.c **** }
+  34              		.loc 1 222 0
+  35 0000 0020     		movs	r0, #0
+  36              	.LVL1:
+  37 0002 7047     		bx	lr
+  38              		.cfi_endproc
+  39              	.LFE8:
+  41              		.section	.text.get_key,"ax",%progbits
+  42              		.align	1
+  43              		.global	get_key
+  44              		.thumb
+  45              		.thumb_func
+  47              	get_key:
+  48              	.LFB11:
+  49              		.cfi_startproc
+  50              		@ args = 0, pretend = 0, frame = 0
+  51              		@ frame_needed = 0, uses_anonymous_args = 0
+  52              		@ link register save eliminated.
+  53 0000 0020     		movs	r0, #0
+  54 0002 7047     		bx	lr
+  55              		.cfi_endproc
+  56              	.LFE11:
+  58              		.section	.text.ROUND_KEY_GEN,"ax",%progbits
+  59              		.align	1
+  60              		.global	ROUND_KEY_GEN
+  61              		.thumb
+  62              		.thumb_func
+  64              	ROUND_KEY_GEN:
+  65              	.LFB1:
+  55:simpleserial-base.c **** 	u32 i, j;
+  66              		.loc 1 55 0
+  67              		.cfi_startproc
+  68              		@ args = 0, pretend = 0, frame = 0
+  69              		@ frame_needed = 0, uses_anonymous_args = 0
+  70              	.LVL2:
+  55:simpleserial-base.c **** 	u32 i, j;
+  71              		.loc 1 55 0
+  72 0000 38B5     		push	{r3, r4, r5, lr}
+  73              	.LCFI0:
+  74              		.cfi_def_cfa_offset 16
+  75              		.cfi_offset 3, -16
+  76              		.cfi_offset 4, -12
+  77              		.cfi_offset 5, -8
+  78              		.cfi_offset 14, -4
+  58:simpleserial-base.c **** 	
+  79              		.loc 1 58 0
+  80 0002 0020     		movs	r0, #0
+  81 0004 FFF7FEFF 		bl	time
+  82              	.LVL3:
+  83 0008 FFF7FEFF 		bl	srand
+  84              	.LVL4:
+  66:simpleserial-base.c **** 	
+  85              		.loc 1 66 0
+  86 000c FFF7FEFF 		bl	rand
+  87              	.LVL5:
+  88 0010 0546     		mov	r5, r0
+  89 0012 FFF7FEFF 		bl	rand
+  90              	.LVL6:
+  91 0016 204C     		ldr	r4, .L7
+  92 0018 45EA0040 		orr	r0, r5, r0, lsl #16
+  93 001c 2060     		str	r0, [r4]
+  94              	.LVL7:
+  95 001e FFF7FEFF 		bl	rand
+  96              	.LVL8:
+  97 0022 0546     		mov	r5, r0
+  98 0024 FFF7FEFF 		bl	rand
+  99              	.LVL9:
+ 100 0028 45EA0040 		orr	r0, r5, r0, lsl #16
+ 101 002c 6060     		str	r0, [r4, #4]
+ 102              	.LVL10:
+ 103 002e FFF7FEFF 		bl	rand
+ 104              	.LVL11:
+ 105 0032 0546     		mov	r5, r0
+ 106 0034 FFF7FEFF 		bl	rand
+ 107              	.LVL12:
+ 108 0038 45EA0040 		orr	r0, r5, r0, lsl #16
+ 109 003c A060     		str	r0, [r4, #8]
+ 110              	.LVL13:
+ 111 003e FFF7FEFF 		bl	rand
+ 112              	.LVL14:
+ 113 0042 FFF7FEFF 		bl	rand
+ 114              	.LVL15:
+  70:simpleserial-base.c **** 	MASTER_KEY[2] = 0x779428D2;
+ 115              		.loc 1 70 0
+ 116 0046 154B     		ldr	r3, .L7+4
+ 117 0048 1548     		ldr	r0, .L7+8
+ 118 004a 84E80900 		stmia	r4, {r0, r3}
+  71:simpleserial-base.c **** 	MASTER_KEY[3] = 0x6DC416DD;
+ 119              		.loc 1 71 0
+ 120 004e 154B     		ldr	r3, .L7+12
+ 121 0050 A360     		str	r3, [r4, #8]
+  72:simpleserial-base.c **** 
+ 122              		.loc 1 72 0
+ 123 0052 A3F11D63 		sub	r3, r3, #164626432
+ 124 0056 A3F58F53 		sub	r3, r3, #4576
+ 125 005a 153B     		subs	r3, r3, #21
+ 126 005c E360     		str	r3, [r4, #12]
+ 127              	.LVL16:
+ 128 005e 0122     		movs	r2, #1
+  57:simpleserial-base.c **** 	srand(time(NULL));
+ 129              		.loc 1 57 0
+ 130 0060 0023     		movs	r3, #0
+  90:simpleserial-base.c **** 		ROUND_KEY[INT_NUM*i] ^= RCON;
+ 131              		.loc 1 90 0
+ 132 0062 04F11001 		add	r1, r4, #16
+ 133              	.LVL17:
+ 134              	.L4:
+ 135 0066 5800     		lsls	r0, r3, #1
+ 136 0068 00F00300 		and	r0, r0, #3
+ 137 006c 54F82000 		ldr	r0, [r4, r0, lsl #2]
+ 138 0070 41F83300 		str	r0, [r1, r3, lsl #3]
+ 139              	.LVL18:
+ 140 0074 02F00300 		and	r0, r2, #3
+ 141 0078 54F82000 		ldr	r0, [r4, r0, lsl #2]
+ 142 007c 41F82200 		str	r0, [r1, r2, lsl #2]
+ 143              	.LVL19:
+  91:simpleserial-base.c **** 		RCON++;
+ 144              		.loc 1 91 0
+ 145 0080 51F83300 		ldr	r0, [r1, r3, lsl #3]
+ 146 0084 5840     		eors	r0, r0, r3
+ 147 0086 41F83300 		str	r0, [r1, r3, lsl #3]
+  92:simpleserial-base.c **** 		
+ 148              		.loc 1 92 0
+ 149 008a 0133     		adds	r3, r3, #1
+ 150              	.LVL20:
+  88:simpleserial-base.c **** 		for (j = 0; j < INT_NUM; j++) 
+ 151              		.loc 1 88 0
+ 152 008c 0E2B     		cmp	r3, #14
+ 153 008e 02F10202 		add	r2, r2, #2
+ 154 0092 E8D1     		bne	.L4
+  95:simpleserial-base.c **** 
+ 155              		.loc 1 95 0
+ 156 0094 38BD     		pop	{r3, r4, r5, pc}
+ 157              	.LVL21:
+ 158              	.L8:
+ 159 0096 00BF     		.align	2
+ 160              	.L7:
+ 161 0098 00000000 		.word	.LANCHOR0
+ 162 009c AD201D7E 		.word	2115838125
+ 163 00a0 9722152E 		.word	773137047
+ 164 00a4 D2289477 		.word	2006198482
+ 165              		.cfi_endproc
+ 166              	.LFE1:
+ 168              		.section	.text.keyadd,"ax",%progbits
+ 169              		.align	1
+ 170              		.global	keyadd
+ 171              		.thumb
+ 172              		.thumb_func
+ 174              	keyadd:
+ 175              	.LFB2:
+  98:simpleserial-base.c **** 	val[0] ^= rk[0];
+ 176              		.loc 1 98 0
+ 177              		.cfi_startproc
+ 178              		@ args = 0, pretend = 0, frame = 0
+ 179              		@ frame_needed = 0, uses_anonymous_args = 0
+ 180              		@ link register save eliminated.
+ 181              	.LVL22:
+  99:simpleserial-base.c **** 	val[1] ^= rk[1];
+ 182              		.loc 1 99 0
+ 183 0000 0B78     		ldrb	r3, [r1]	@ zero_extendqisi2
+ 184 0002 0278     		ldrb	r2, [r0]	@ zero_extendqisi2
+ 185 0004 5340     		eors	r3, r3, r2
+ 186 0006 0370     		strb	r3, [r0]
+ 100:simpleserial-base.c **** 	val[2] ^= rk[2];
+ 187              		.loc 1 100 0
+ 188 0008 4B78     		ldrb	r3, [r1, #1]	@ zero_extendqisi2
+ 189 000a 4278     		ldrb	r2, [r0, #1]	@ zero_extendqisi2
+ 190 000c 5340     		eors	r3, r3, r2
+ 191 000e 4370     		strb	r3, [r0, #1]
+ 101:simpleserial-base.c **** 	val[3] ^= rk[3];
+ 192              		.loc 1 101 0
+ 193 0010 8B78     		ldrb	r3, [r1, #2]	@ zero_extendqisi2
+ 194 0012 8278     		ldrb	r2, [r0, #2]	@ zero_extendqisi2
+ 195 0014 5340     		eors	r3, r3, r2
+ 196 0016 8370     		strb	r3, [r0, #2]
+ 102:simpleserial-base.c **** 	val[4] ^= rk[4];
+ 197              		.loc 1 102 0
+ 198 0018 CB78     		ldrb	r3, [r1, #3]	@ zero_extendqisi2
+ 199 001a C278     		ldrb	r2, [r0, #3]	@ zero_extendqisi2
+ 200 001c 5340     		eors	r3, r3, r2
+ 201 001e C370     		strb	r3, [r0, #3]
+ 103:simpleserial-base.c **** 	val[5] ^= rk[5];
+ 202              		.loc 1 103 0
+ 203 0020 0B79     		ldrb	r3, [r1, #4]	@ zero_extendqisi2
+ 204 0022 0279     		ldrb	r2, [r0, #4]	@ zero_extendqisi2
+ 205 0024 5340     		eors	r3, r3, r2
+ 206 0026 0371     		strb	r3, [r0, #4]
+ 104:simpleserial-base.c **** 	val[6] ^= rk[6];
+ 207              		.loc 1 104 0
+ 208 0028 4B79     		ldrb	r3, [r1, #5]	@ zero_extendqisi2
+ 209 002a 4279     		ldrb	r2, [r0, #5]	@ zero_extendqisi2
+ 210 002c 5340     		eors	r3, r3, r2
+ 211 002e 4371     		strb	r3, [r0, #5]
+ 105:simpleserial-base.c **** 	val[7] ^= rk[7];
+ 212              		.loc 1 105 0
+ 213 0030 8279     		ldrb	r2, [r0, #6]	@ zero_extendqisi2
+ 214 0032 8B79     		ldrb	r3, [r1, #6]	@ zero_extendqisi2
+ 215 0034 5340     		eors	r3, r3, r2
+ 216 0036 8371     		strb	r3, [r0, #6]
+ 106:simpleserial-base.c **** }
+ 217              		.loc 1 106 0
+ 218 0038 C279     		ldrb	r2, [r0, #7]	@ zero_extendqisi2
+ 219 003a CB79     		ldrb	r3, [r1, #7]	@ zero_extendqisi2
+ 220 003c 5340     		eors	r3, r3, r2
+ 221 003e C371     		strb	r3, [r0, #7]
+ 222 0040 7047     		bx	lr
+ 223              		.cfi_endproc
+ 224              	.LFE2:
+ 226              		.section	.text.convert,"ax",%progbits
+ 227              		.align	1
+ 228              		.global	convert
+ 229              		.thumb
+ 230              		.thumb_func
+ 232              	convert:
+ 233              	.LFB3:
+ 110:simpleserial-base.c **** 	int i,j;
+ 234              		.loc 1 110 0
+ 235              		.cfi_startproc
+ 236              		@ args = 0, pretend = 0, frame = 8
+ 237              		@ frame_needed = 0, uses_anonymous_args = 0
+ 238              	.LVL23:
+ 239 0000 73B5     		push	{r0, r1, r4, r5, r6, lr}
+ 240              	.LCFI1:
+ 241              		.cfi_def_cfa_offset 24
+ 242              		.cfi_offset 4, -16
+ 243              		.cfi_offset 5, -12
+ 244              		.cfi_offset 6, -8
+ 245              		.cfi_offset 14, -4
+ 112:simpleserial-base.c **** 	for (i = 0; i < 8; i++) 
+ 246              		.loc 1 112 0
+ 247 0002 0023     		movs	r3, #0
+ 248 0004 0093     		str	r3, [sp]
+ 249 0006 0193     		str	r3, [sp, #4]
+ 250              	.LVL24:
+ 115:simpleserial-base.c **** 	
+ 251              		.loc 1 115 0
+ 252 0008 0126     		movs	r6, #1
+ 253              	.LVL25:
+ 254              	.L11:
+ 255 000a 1DF80340 		ldrb	r4, [sp, r3]	@ zero_extendqisi2
+ 256 000e 06FA03F5 		lsl	r5, r6, r3
+ 257 0012 0021     		movs	r1, #0
+ 258              	.LVL26:
+ 259              	.L12:
+ 115:simpleserial-base.c **** 	
+ 260              		.loc 1 115 0 is_stmt 0 discriminator 3
+ 261 0014 425C     		ldrb	r2, [r0, r1]	@ zero_extendqisi2
+ 262 0016 2A40     		ands	r2, r2, r5
+ 263 0018 1A41     		asrs	r2, r2, r3
+ 264 001a 8A40     		lsls	r2, r2, r1
+ 114:simpleserial-base.c **** 			T[i] |= (((X[j] & (1<<i))>>i) << j);
+ 265              		.loc 1 114 0 is_stmt 1 discriminator 3
+ 266 001c 0131     		adds	r1, r1, #1
+ 267              	.LVL27:
+ 115:simpleserial-base.c **** 	
+ 268              		.loc 1 115 0 discriminator 3
+ 269 001e 1443     		orrs	r4, r4, r2
+ 114:simpleserial-base.c **** 			T[i] |= (((X[j] & (1<<i))>>i) << j);
+ 270              		.loc 1 114 0 discriminator 3
+ 271 0020 0829     		cmp	r1, #8
+ 115:simpleserial-base.c **** 	
+ 272              		.loc 1 115 0 discriminator 3
+ 273 0022 E4B2     		uxtb	r4, r4
+ 114:simpleserial-base.c **** 			T[i] |= (((X[j] & (1<<i))>>i) << j);
+ 274              		.loc 1 114 0 discriminator 3
+ 275 0024 F6D1     		bne	.L12
+ 276 0026 0DF80340 		strb	r4, [sp, r3]
+ 113:simpleserial-base.c **** 		for (j = 0; j < 8; j++) 
+ 277              		.loc 1 113 0 discriminator 2
+ 278 002a 0133     		adds	r3, r3, #1
+ 279              	.LVL28:
+ 280 002c 082B     		cmp	r3, #8
+ 281 002e ECD1     		bne	.L11
+ 282 0030 0023     		movs	r3, #0
+ 283              	.LVL29:
+ 284              	.L14:
+ 118:simpleserial-base.c **** }
+ 285              		.loc 1 118 0 discriminator 3
+ 286 0032 1DF80320 		ldrb	r2, [sp, r3]	@ zero_extendqisi2
+ 287 0036 C254     		strb	r2, [r0, r3]
+ 117:simpleserial-base.c **** 		X[i] = T[i];	
+ 288              		.loc 1 117 0 discriminator 3
+ 289 0038 0133     		adds	r3, r3, #1
+ 290              	.LVL30:
+ 291 003a 082B     		cmp	r3, #8
+ 292 003c F9D1     		bne	.L14
+ 119:simpleserial-base.c **** 
+ 293              		.loc 1 119 0
+ 294 003e 02B0     		add	sp, sp, #8
+ 295              	.LCFI2:
+ 296              		.cfi_def_cfa_offset 16
+ 297              		@ sp needed
+ 298 0040 70BD     		pop	{r4, r5, r6, pc}
+ 299              		.cfi_endproc
+ 300              	.LFE3:
+ 302              		.section	.text.sbox_TLU,"ax",%progbits
+ 303              		.align	1
+ 304              		.global	sbox_TLU
+ 305              		.thumb
+ 306              		.thumb_func
+ 308              	sbox_TLU:
+ 309              	.LFB4:
+ 121:simpleserial-base.c **** 	int i;
+ 310              		.loc 1 121 0
+ 311              		.cfi_startproc
+ 312              		@ args = 0, pretend = 0, frame = 0
+ 313              		@ frame_needed = 0, uses_anonymous_args = 0
+ 314              	.LVL31:
+ 315 0000 10B5     		push	{r4, lr}
+ 316              	.LCFI3:
+ 317              		.cfi_def_cfa_offset 8
+ 318              		.cfi_offset 4, -8
+ 319              		.cfi_offset 14, -4
+ 121:simpleserial-base.c **** 	int i;
+ 320              		.loc 1 121 0
+ 321 0002 0446     		mov	r4, r0
+ 123:simpleserial-base.c **** 	for (i = 0; i < 8; i++)
+ 322              		.loc 1 123 0
+ 323 0004 FFF7FEFF 		bl	convert
+ 324              	.LVL32:
+ 325 0008 431E     		subs	r3, r0, #1
+ 326 000a C21D     		adds	r2, r0, #7
+ 125:simpleserial-base.c **** 	convert(X);
+ 327              		.loc 1 125 0
+ 328 000c 0548     		ldr	r0, .L20
+ 329              	.LVL33:
+ 330              	.L18:
+ 125:simpleserial-base.c **** 	convert(X);
+ 331              		.loc 1 125 0 is_stmt 0 discriminator 3
+ 332 000e 13F8011F 		ldrb	r1, [r3, #1]!	@ zero_extendqisi2
+ 333 0012 415C     		ldrb	r1, [r0, r1]	@ zero_extendqisi2
+ 334 0014 1970     		strb	r1, [r3]
+ 124:simpleserial-base.c **** 		X[i] = Sbox[X[i]];
+ 335              		.loc 1 124 0 is_stmt 1 discriminator 3
+ 336 0016 9342     		cmp	r3, r2
+ 337 0018 F9D1     		bne	.L18
+ 126:simpleserial-base.c **** }
+ 338              		.loc 1 126 0
+ 339 001a 2046     		mov	r0, r4
+ 127:simpleserial-base.c **** void pbox(u8* X)
+ 340              		.loc 1 127 0
+ 341 001c BDE81040 		pop	{r4, lr}
+ 342              	.LCFI4:
+ 343              		.cfi_restore 14
+ 344              		.cfi_restore 4
+ 345              		.cfi_def_cfa_offset 0
+ 346              	.LVL34:
+ 126:simpleserial-base.c **** }
+ 347              		.loc 1 126 0
+ 348 0020 FFF7FEBF 		b	convert
+ 349              	.LVL35:
+ 350              	.L21:
+ 351              		.align	2
+ 352              	.L20:
+ 353 0024 00000000 		.word	.LANCHOR1
+ 354              		.cfi_endproc
+ 355              	.LFE4:
+ 357              		.section	.text.pbox,"ax",%progbits
+ 358              		.align	1
+ 359              		.global	pbox
+ 360              		.thumb
+ 361              		.thumb_func
+ 363              	pbox:
+ 364              	.LFB5:
+ 129:simpleserial-base.c **** 	X[1] = ((X[1] << 7)) | ((X[1] >> 1));
+ 365              		.loc 1 129 0
+ 366              		.cfi_startproc
+ 367              		@ args = 0, pretend = 0, frame = 0
+ 368              		@ frame_needed = 0, uses_anonymous_args = 0
+ 369              		@ link register save eliminated.
+ 370              	.LVL36:
+ 130:simpleserial-base.c **** 	X[2] = ((X[2] << 4)) | ((X[2] >> 4));
+ 371              		.loc 1 130 0
+ 372 0000 4278     		ldrb	r2, [r0, #1]	@ zero_extendqisi2
+ 373 0002 5308     		lsrs	r3, r2, #1
+ 374 0004 43EAC213 		orr	r3, r3, r2, lsl #7
+ 131:simpleserial-base.c **** 	X[3] = ((X[3] << 3)) | ((X[3] >> 5));
+ 375              		.loc 1 131 0
+ 376 0008 8278     		ldrb	r2, [r0, #2]	@ zero_extendqisi2
+ 130:simpleserial-base.c **** 	X[2] = ((X[2] << 4)) | ((X[2] >> 4));
+ 377              		.loc 1 130 0
+ 378 000a 4370     		strb	r3, [r0, #1]
+ 131:simpleserial-base.c **** 	X[3] = ((X[3] << 3)) | ((X[3] >> 5));
+ 379              		.loc 1 131 0
+ 380 000c 1309     		lsrs	r3, r2, #4
+ 381 000e 43EA0213 		orr	r3, r3, r2, lsl #4
+ 132:simpleserial-base.c **** 	X[4] = ((X[4] << 6)) | ((X[4] >> 2));
+ 382              		.loc 1 132 0
+ 383 0012 C278     		ldrb	r2, [r0, #3]	@ zero_extendqisi2
+ 131:simpleserial-base.c **** 	X[3] = ((X[3] << 3)) | ((X[3] >> 5));
+ 384              		.loc 1 131 0
+ 385 0014 8370     		strb	r3, [r0, #2]
+ 132:simpleserial-base.c **** 	X[4] = ((X[4] << 6)) | ((X[4] >> 2));
+ 386              		.loc 1 132 0
+ 387 0016 5309     		lsrs	r3, r2, #5
+ 388 0018 43EAC203 		orr	r3, r3, r2, lsl #3
+ 133:simpleserial-base.c **** 	X[5] = ((X[5] << 5)) | ((X[5] >> 3));
+ 389              		.loc 1 133 0
+ 390 001c 0279     		ldrb	r2, [r0, #4]	@ zero_extendqisi2
+ 132:simpleserial-base.c **** 	X[4] = ((X[4] << 6)) | ((X[4] >> 2));
+ 391              		.loc 1 132 0
+ 392 001e C370     		strb	r3, [r0, #3]
+ 133:simpleserial-base.c **** 	X[5] = ((X[5] << 5)) | ((X[5] >> 3));
+ 393              		.loc 1 133 0
+ 394 0020 9308     		lsrs	r3, r2, #2
+ 395 0022 43EA8213 		orr	r3, r3, r2, lsl #6
+ 134:simpleserial-base.c **** 	X[6] = ((X[6] << 1)) | ((X[6] >> 7));
+ 396              		.loc 1 134 0
+ 397 0026 4279     		ldrb	r2, [r0, #5]	@ zero_extendqisi2
+ 133:simpleserial-base.c **** 	X[5] = ((X[5] << 5)) | ((X[5] >> 3));
+ 398              		.loc 1 133 0
+ 399 0028 0371     		strb	r3, [r0, #4]
+ 134:simpleserial-base.c **** 	X[6] = ((X[6] << 1)) | ((X[6] >> 7));
+ 400              		.loc 1 134 0
+ 401 002a D308     		lsrs	r3, r2, #3
+ 402 002c 43EA4213 		orr	r3, r3, r2, lsl #5
+ 135:simpleserial-base.c **** 	X[7] = ((X[7] << 2)) | ((X[7] >> 6));
+ 403              		.loc 1 135 0
+ 404 0030 8279     		ldrb	r2, [r0, #6]	@ zero_extendqisi2
+ 134:simpleserial-base.c **** 	X[6] = ((X[6] << 1)) | ((X[6] >> 7));
+ 405              		.loc 1 134 0
+ 406 0032 4371     		strb	r3, [r0, #5]
+ 135:simpleserial-base.c **** 	X[7] = ((X[7] << 2)) | ((X[7] >> 6));
+ 407              		.loc 1 135 0
+ 408 0034 D309     		lsrs	r3, r2, #7
+ 409 0036 43EA4203 		orr	r3, r3, r2, lsl #1
+ 136:simpleserial-base.c **** 
+ 410              		.loc 1 136 0
+ 411 003a C279     		ldrb	r2, [r0, #7]	@ zero_extendqisi2
+ 135:simpleserial-base.c **** 	X[7] = ((X[7] << 2)) | ((X[7] >> 6));
+ 412              		.loc 1 135 0
+ 413 003c 8371     		strb	r3, [r0, #6]
+ 136:simpleserial-base.c **** 
+ 414              		.loc 1 136 0
+ 415 003e 9309     		lsrs	r3, r2, #6
+ 416 0040 43EA8203 		orr	r3, r3, r2, lsl #2
+ 417 0044 C371     		strb	r3, [r0, #7]
+ 418 0046 7047     		bx	lr
+ 419              		.cfi_endproc
+ 420              	.LFE5:
+ 422              		.section	.text.get_pt,"ax",%progbits
+ 423              		.align	1
+ 424              		.global	get_pt
+ 425              		.thumb
+ 426              		.thumb_func
+ 428              	get_pt:
+ 429              	.LFB7:
+ 165:simpleserial-base.c ****     int i = 0;
+ 430              		.loc 1 165 0
+ 431              		.cfi_startproc
+ 432              		@ args = 0, pretend = 0, frame = 0
+ 433              		@ frame_needed = 0, uses_anonymous_args = 0
+ 434              	.LVL37:
+ 435 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 436              	.LCFI5:
+ 437              		.cfi_def_cfa_offset 24
+ 438              		.cfi_offset 3, -24
+ 439              		.cfi_offset 4, -20
+ 440              		.cfi_offset 5, -16
+ 441              		.cfi_offset 6, -12
+ 442              		.cfi_offset 7, -8
+ 443              		.cfi_offset 14, -4
+ 169:simpleserial-base.c ****     PLAIN_TEXT[1] = (pt[4] << 24) ^ (pt[5] << 16) ^ (pt[6] << 8) ^ (pt[7]);
+ 444              		.loc 1 169 0
+ 445 0002 4378     		ldrb	r3, [r0, #1]	@ zero_extendqisi2
+ 446 0004 0278     		ldrb	r2, [r0]	@ zero_extendqisi2
+ 447 0006 324D     		ldr	r5, .L28
+ 448 0008 1B04     		lsls	r3, r3, #16
+ 449 000a 43EA0263 		orr	r3, r3, r2, lsl #24
+ 450 000e C278     		ldrb	r2, [r0, #3]	@ zero_extendqisi2
+ 451 0010 5340     		eors	r3, r3, r2
+ 452 0012 8278     		ldrb	r2, [r0, #2]	@ zero_extendqisi2
+ 453 0014 43EA0223 		orr	r3, r3, r2, lsl #8
+ 454 0018 C5F88030 		str	r3, [r5, #128]
+ 170:simpleserial-base.c ****     ROUND_KEY_GEN();
+ 455              		.loc 1 170 0
+ 456 001c 4379     		ldrb	r3, [r0, #5]	@ zero_extendqisi2
+ 457 001e 0279     		ldrb	r2, [r0, #4]	@ zero_extendqisi2
+ 458 0020 1B04     		lsls	r3, r3, #16
+ 459 0022 43EA0263 		orr	r3, r3, r2, lsl #24
+ 460 0026 C279     		ldrb	r2, [r0, #7]	@ zero_extendqisi2
+ 461 0028 5340     		eors	r3, r3, r2
+ 462 002a 8279     		ldrb	r2, [r0, #6]	@ zero_extendqisi2
+ 463 002c 43EA0223 		orr	r3, r3, r2, lsl #8
+ 464 0030 C5F88430 		str	r3, [r5, #132]
+ 165:simpleserial-base.c ****     int i = 0;
+ 465              		.loc 1 165 0
+ 466 0034 0446     		mov	r4, r0
+ 171:simpleserial-base.c **** 	trigger_high();
+ 467              		.loc 1 171 0
+ 468 0036 FFF7FEFF 		bl	ROUND_KEY_GEN
+ 469              	.LVL38:
+ 172:simpleserial-base.c ****     
+ 470              		.loc 1 172 0
+ 471 003a FFF7FEFF 		bl	trigger_high
+ 472              	.LVL39:
+ 174:simpleserial-base.c **** 
+ 473              		.loc 1 174 0
+ 474 003e 05F11001 		add	r1, r5, #16
+ 475 0042 05F18000 		add	r0, r5, #128
+ 476 0046 FFF7FEFF 		bl	keyadd
+ 477              	.LVL40:
+ 478 004a 0026     		movs	r6, #0
+ 184:simpleserial-base.c **** 
+ 479              		.loc 1 184 0
+ 480 004c 1035     		adds	r5, r5, #16
+ 481              	.LVL41:
+ 482              	.L24:
+ 180:simpleserial-base.c **** 
+ 483              		.loc 1 180 0 discriminator 3
+ 484 004e 2148     		ldr	r0, .L28+4
+ 485 0050 214F     		ldr	r7, .L28+8
+ 486 0052 FFF7FEFF 		bl	sbox_TLU
+ 487              	.LVL42:
+ 488 0056 0836     		adds	r6, r6, #8
+ 182:simpleserial-base.c **** 
+ 489              		.loc 1 182 0 discriminator 3
+ 490 0058 1E48     		ldr	r0, .L28+4
+ 491 005a FFF7FEFF 		bl	pbox
+ 492              	.LVL43:
+ 184:simpleserial-base.c **** 
+ 493              		.loc 1 184 0 discriminator 3
+ 494 005e A919     		adds	r1, r5, r6
+ 495 0060 1C48     		ldr	r0, .L28+4
+ 496 0062 FFF7FEFF 		bl	keyadd
+ 497              	.LVL44:
+ 177:simpleserial-base.c **** 	{
+ 498              		.loc 1 177 0 discriminator 3
+ 499 0066 182E     		cmp	r6, #24
+ 500 0068 F1D1     		bne	.L24
+ 190:simpleserial-base.c ****     for (i = 4; i < ROUND+1; i++)
+ 501              		.loc 1 190 0
+ 502 006a FFF7FEFF 		bl	trigger_low
+ 503              	.LVL45:
+ 504 006e 0026     		movs	r6, #0
+ 505              	.LVL46:
+ 506              	.L25:
+ 194:simpleserial-base.c **** 
+ 507              		.loc 1 194 0 discriminator 3
+ 508 0070 174D     		ldr	r5, .L28
+ 509 0072 05F18000 		add	r0, r5, #128
+ 510 0076 FFF7FEFF 		bl	sbox_TLU
+ 511              	.LVL47:
+ 196:simpleserial-base.c **** 
+ 512              		.loc 1 196 0 discriminator 3
+ 513 007a 05F18000 		add	r0, r5, #128
+ 514 007e FFF7FEFF 		bl	pbox
+ 515              	.LVL48:
+ 198:simpleserial-base.c **** 
+ 516              		.loc 1 198 0 discriminator 3
+ 517 0082 06F12001 		add	r1, r6, #32
+ 518 0086 3944     		add	r1, r1, r7
+ 519 0088 05F18000 		add	r0, r5, #128
+ 520 008c 0836     		adds	r6, r6, #8
+ 521 008e FFF7FEFF 		bl	keyadd
+ 522              	.LVL49:
+ 191:simpleserial-base.c **** 	{
+ 523              		.loc 1 191 0 discriminator 3
+ 524 0092 502E     		cmp	r6, #80
+ 525 0094 ECD1     		bne	.L25
+ 203:simpleserial-base.c ****     pt[1] = PLAIN_TEXT[1] >> 16;
+ 526              		.loc 1 203 0
+ 527 0096 95F88730 		ldrb	r3, [r5, #135]	@ zero_extendqisi2
+ 528 009a 2370     		strb	r3, [r4]
+ 204:simpleserial-base.c ****     pt[2] = PLAIN_TEXT[1] >> 8;
+ 529              		.loc 1 204 0
+ 530 009c B5F88630 		ldrh	r3, [r5, #134]
+ 531 00a0 6370     		strb	r3, [r4, #1]
+ 205:simpleserial-base.c ****     pt[3] = PLAIN_TEXT[1] >> 0;
+ 532              		.loc 1 205 0
+ 533 00a2 D5F88430 		ldr	r3, [r5, #132]
+ 534 00a6 1B0A     		lsrs	r3, r3, #8
+ 535 00a8 A370     		strb	r3, [r4, #2]
+ 206:simpleserial-base.c ****     pt[4] = PLAIN_TEXT[0] >> 24;
+ 536              		.loc 1 206 0
+ 537 00aa D5F88430 		ldr	r3, [r5, #132]
+ 538 00ae E370     		strb	r3, [r4, #3]
+ 207:simpleserial-base.c ****     pt[5] = PLAIN_TEXT[0] >> 16;
+ 539              		.loc 1 207 0
+ 540 00b0 D5F88030 		ldr	r3, [r5, #128]
+ 210:simpleserial-base.c ****     
+ 541              		.loc 1 210 0
+ 542 00b4 E371     		strb	r3, [r4, #7]
+ 207:simpleserial-base.c ****     pt[5] = PLAIN_TEXT[0] >> 16;
+ 543              		.loc 1 207 0
+ 544 00b6 1A0E     		lsrs	r2, r3, #24
+ 545 00b8 2271     		strb	r2, [r4, #4]
+ 208:simpleserial-base.c ****     pt[6] = PLAIN_TEXT[0] >> 8;
+ 546              		.loc 1 208 0
+ 547 00ba 1A0C     		lsrs	r2, r3, #16
+ 548 00bc 6271     		strb	r2, [r4, #5]
+ 209:simpleserial-base.c ****     pt[7] = PLAIN_TEXT[0] >> 0;
+ 549              		.loc 1 209 0
+ 550 00be 1A0A     		lsrs	r2, r3, #8
+ 551 00c0 A271     		strb	r2, [r4, #6]
+ 214:simpleserial-base.c **** 	return 0x00;
+ 552              		.loc 1 214 0
+ 553 00c2 1021     		movs	r1, #16
+ 554 00c4 2246     		mov	r2, r4
+ 555 00c6 7220     		movs	r0, #114
+ 556 00c8 FFF7FEFF 		bl	simpleserial_put
+ 557              	.LVL50:
+ 216:simpleserial-base.c **** 
+ 558              		.loc 1 216 0
+ 559 00cc 0020     		movs	r0, #0
+ 560 00ce F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 561              	.LVL51:
+ 562              	.L29:
+ 563              		.align	2
+ 564              	.L28:
+ 565 00d0 00000000 		.word	.LANCHOR0
+ 566 00d4 80000000 		.word	.LANCHOR0+128
+ 567 00d8 10000000 		.word	.LANCHOR0+16
+ 568              		.cfi_endproc
+ 569              	.LFE7:
+ 571              		.section	.text.ENC_TLU,"ax",%progbits
+ 572              		.align	1
+ 573              		.global	ENC_TLU
+ 574              		.thumb
+ 575              		.thumb_func
+ 577              	ENC_TLU:
+ 578              	.LFB6:
+ 139:simpleserial-base.c **** 	int i = 0;
+ 579              		.loc 1 139 0
+ 580              		.cfi_startproc
+ 581              		@ args = 0, pretend = 0, frame = 0
+ 582              		@ frame_needed = 0, uses_anonymous_args = 0
+ 583              	.LVL52:
+ 584 0000 70B5     		push	{r4, r5, r6, lr}
+ 585              	.LCFI6:
+ 586              		.cfi_def_cfa_offset 16
+ 587              		.cfi_offset 4, -16
+ 588              		.cfi_offset 5, -12
+ 589              		.cfi_offset 6, -8
+ 590              		.cfi_offset 14, -4
+ 139:simpleserial-base.c **** 	int i = 0;
+ 591              		.loc 1 139 0
+ 592 0002 0C46     		mov	r4, r1
+ 593 0004 0646     		mov	r6, r0
+ 594              	.LVL53:
+ 144:simpleserial-base.c **** 
+ 595              		.loc 1 144 0
+ 596 0006 FFF7FEFF 		bl	keyadd
+ 597              	.LVL54:
+ 598 000a 7034     		adds	r4, r4, #112
+ 599              	.LVL55:
+ 600 000c 01F10805 		add	r5, r1, #8
+ 601              	.LVL56:
+ 602              	.L31:
+ 150:simpleserial-base.c **** 
+ 603              		.loc 1 150 0 discriminator 3
+ 604 0010 3046     		mov	r0, r6
+ 605 0012 FFF7FEFF 		bl	sbox_TLU
+ 606              	.LVL57:
+ 152:simpleserial-base.c **** 
+ 607              		.loc 1 152 0 discriminator 3
+ 608 0016 3046     		mov	r0, r6
+ 609 0018 FFF7FEFF 		bl	pbox
+ 610              	.LVL58:
+ 154:simpleserial-base.c **** 
+ 611              		.loc 1 154 0 discriminator 3
+ 612 001c 2946     		mov	r1, r5
+ 613 001e 3046     		mov	r0, r6
+ 614 0020 0835     		adds	r5, r5, #8
+ 615 0022 FFF7FEFF 		bl	keyadd
+ 616              	.LVL59:
+ 147:simpleserial-base.c **** 	{
+ 617              		.loc 1 147 0 discriminator 3
+ 618 0026 A542     		cmp	r5, r4
+ 619 0028 F2D1     		bne	.L31
+ 158:simpleserial-base.c **** #if SS_VER == SS_VER_2_0
+ 620              		.loc 1 158 0
+ 621 002a 70BD     		pop	{r4, r5, r6, pc}
+ 622              		.cfi_endproc
+ 623              	.LFE6:
+ 625              		.section	.text.startup.main,"ax",%progbits
+ 626              		.align	1
+ 627              		.global	main
+ 628              		.thumb
+ 629              		.thumb_func
+ 631              	main:
+ 632              	.LFB9:
+ 223:simpleserial-base.c **** 
+ 224:simpleserial-base.c **** 
+ 225:simpleserial-base.c **** int main(void)
+ 226:simpleserial-base.c **** {
+ 633              		.loc 1 226 0
+ 634              		.cfi_startproc
+ 635              		@ Volatile: function does not return.
+ 636              		@ args = 0, pretend = 0, frame = 0
+ 637              		@ frame_needed = 0, uses_anonymous_args = 0
+ 638 0000 08B5     		push	{r3, lr}
+ 639              	.LCFI7:
+ 640              		.cfi_def_cfa_offset 8
+ 641              		.cfi_offset 3, -8
+ 642              		.cfi_offset 14, -4
+ 227:simpleserial-base.c ****     platform_init();
+ 643              		.loc 1 227 0
+ 644 0002 FFF7FEFF 		bl	platform_init
+ 645              	.LVL60:
+ 228:simpleserial-base.c **** 	init_uart();	
+ 646              		.loc 1 228 0
+ 647 0006 FFF7FEFF 		bl	init_uart
+ 648              	.LVL61:
+ 229:simpleserial-base.c **** 	trigger_setup();
+ 649              		.loc 1 229 0
+ 650 000a FFF7FEFF 		bl	trigger_setup
+ 651              	.LVL62:
+ 230:simpleserial-base.c **** 	
+ 231:simpleserial-base.c ****  	/* Uncomment this to get a HELLO message for debug */
+ 232:simpleserial-base.c **** 	/*
+ 233:simpleserial-base.c **** 	putch('h');
+ 234:simpleserial-base.c **** 	putch('e');
+ 235:simpleserial-base.c **** 	putch('l');
+ 236:simpleserial-base.c **** 	putch('l');
+ 237:simpleserial-base.c **** 	putch('o');
+ 238:simpleserial-base.c **** 	putch('\n');
+ 239:simpleserial-base.c **** 	*/
+ 240:simpleserial-base.c **** 		
+ 241:simpleserial-base.c **** 	simpleserial_init();		
+ 652              		.loc 1 241 0
+ 653 000e FFF7FEFF 		bl	simpleserial_init
+ 654              	.LVL63:
+ 242:simpleserial-base.c **** 	simpleserial_addcmd('p',16, get_pt);
+ 655              		.loc 1 242 0
+ 656 0012 094A     		ldr	r2, .L35
+ 657 0014 1021     		movs	r1, #16
+ 658 0016 7020     		movs	r0, #112
+ 659 0018 FFF7FEFF 		bl	simpleserial_addcmd
+ 660              	.LVL64:
+ 243:simpleserial-base.c **** #if SS_VER != SS_VER_2_0
+ 244:simpleserial-base.c **** 	simpleserial_addcmd('k', 16, get_key);
+ 661              		.loc 1 244 0
+ 662 001c 074A     		ldr	r2, .L35+4
+ 663 001e 1021     		movs	r1, #16
+ 664 0020 6B20     		movs	r0, #107
+ 665 0022 FFF7FEFF 		bl	simpleserial_addcmd
+ 666              	.LVL65:
+ 245:simpleserial-base.c **** 	simpleserial_addcmd('x', 0, reset);
+ 667              		.loc 1 245 0
+ 668 0026 064A     		ldr	r2, .L35+8
+ 669 0028 0021     		movs	r1, #0
+ 670 002a 7820     		movs	r0, #120
+ 671 002c FFF7FEFF 		bl	simpleserial_addcmd
+ 672              	.LVL66:
+ 673              	.L34:
+ 246:simpleserial-base.c **** #endif
+ 247:simpleserial-base.c **** 	while(1)
+ 248:simpleserial-base.c **** 		simpleserial_get();
+ 674              		.loc 1 248 0 discriminator 1
+ 675 0030 FFF7FEFF 		bl	simpleserial_get
+ 676              	.LVL67:
+ 677 0034 FCE7     		b	.L34
+ 678              	.L36:
+ 679 0036 00BF     		.align	2
+ 680              	.L35:
+ 681 0038 00000000 		.word	get_pt
+ 682 003c 00000000 		.word	get_key
+ 683 0040 00000000 		.word	reset
+ 684              		.cfi_endproc
+ 685              	.LFE9:
+ 687              		.global	Sbox
+ 688              		.global	CIPHER_TEXT
+ 689              		.global	PLAIN_TEXT
+ 690              		.global	ROUND_KEY
+ 691              		.global	MASTER_KEY
+ 692              		.data
+ 693              		.set	.LANCHOR1,. + 0
+ 696              	Sbox:
+ 697 0000 5E       		.byte	94
+ 698 0001 F9       		.byte	-7
+ 699 0002 FC       		.byte	-4
+ 700 0003 00       		.byte	0
+ 701 0004 3F       		.byte	63
+ 702 0005 85       		.byte	-123
+ 703 0006 BA       		.byte	-70
+ 704 0007 5B       		.byte	91
+ 705 0008 18       		.byte	24
+ 706 0009 37       		.byte	55
+ 707 000a B2       		.byte	-78
+ 708 000b C6       		.byte	-58
+ 709 000c 71       		.byte	113
+ 710 000d C3       		.byte	-61
+ 711 000e 74       		.byte	116
+ 712 000f 9D       		.byte	-99
+ 713 0010 A7       		.byte	-89
+ 714 0011 94       		.byte	-108
+ 715 0012 0D       		.byte	13
+ 716 0013 E1       		.byte	-31
+ 717 0014 CA       		.byte	-54
+ 718 0015 68       		.byte	104
+ 719 0016 53       		.byte	83
+ 720 0017 2E       		.byte	46
+ 721 0018 49       		.byte	73
+ 722 0019 62       		.byte	98
+ 723 001a EB       		.byte	-21
+ 724 001b 97       		.byte	-105
+ 725 001c A4       		.byte	-92
+ 726 001d 0E       		.byte	14
+ 727 001e 2D       		.byte	45
+ 728 001f D0       		.byte	-48
+ 729 0020 16       		.byte	22
+ 730 0021 25       		.byte	37
+ 731 0022 AC       		.byte	-84
+ 732 0023 48       		.byte	72
+ 733 0024 63       		.byte	99
+ 734 0025 D1       		.byte	-47
+ 735 0026 EA       		.byte	-22
+ 736 0027 8F       		.byte	-113
+ 737 0028 F7       		.byte	-9
+ 738 0029 40       		.byte	64
+ 739 002a 45       		.byte	69
+ 740 002b B1       		.byte	-79
+ 741 002c 9E       		.byte	-98
+ 742 002d 34       		.byte	52
+ 743 002e 1B       		.byte	27
+ 744 002f F2       		.byte	-14
+ 745 0030 B9       		.byte	-71
+ 746 0031 86       		.byte	-122
+ 747 0032 03       		.byte	3
+ 748 0033 7F       		.byte	127
+ 749 0034 D8       		.byte	-40
+ 750 0035 7A       		.byte	122
+ 751 0036 DD       		.byte	-35
+ 752 0037 3C       		.byte	60
+ 753 0038 E0       		.byte	-32
+ 754 0039 CB       		.byte	-53
+ 755 003a 52       		.byte	82
+ 756 003b 26       		.byte	38
+ 757 003c 15       		.byte	21
+ 758 003d AF       		.byte	-81
+ 759 003e 8C       		.byte	-116
+ 760 003f 69       		.byte	105
+ 761 0040 C2       		.byte	-62
+ 762 0041 75       		.byte	117
+ 763 0042 70       		.byte	112
+ 764 0043 1C       		.byte	28
+ 765 0044 33       		.byte	51
+ 766 0045 99       		.byte	-103
+ 767 0046 B6       		.byte	-74
+ 768 0047 C7       		.byte	-57
+ 769 0048 04       		.byte	4
+ 770 0049 3B       		.byte	59
+ 771 004a BE       		.byte	-66
+ 772 004b 5A       		.byte	90
+ 773 004c FD       		.byte	-3
+ 774 004d 5F       		.byte	95
+ 775 004e F8       		.byte	-8
+ 776 004f 81       		.byte	-127
+ 777 0050 93       		.byte	-109
+ 778 0051 A0       		.byte	-96
+ 779 0052 29       		.byte	41
+ 780 0053 4D       		.byte	77
+ 781 0054 66       		.byte	102
+ 782 0055 D4       		.byte	-44
+ 783 0056 EF       		.byte	-17
+ 784 0057 0A       		.byte	10
+ 785 0058 E5       		.byte	-27
+ 786 0059 CE       		.byte	-50
+ 787 005a 57       		.byte	87
+ 788 005b A3       		.byte	-93
+ 789 005c 90       		.byte	-112
+ 790 005d 2A       		.byte	42
+ 791 005e 09       		.byte	9
+ 792 005f 6C       		.byte	108
+ 793 0060 22       		.byte	34
+ 794 0061 11       		.byte	17
+ 795 0062 88       		.byte	-120
+ 796 0063 E4       		.byte	-28
+ 797 0064 CF       		.byte	-49
+ 798 0065 6D       		.byte	109
+ 799 0066 56       		.byte	86
+ 800 0067 AB       		.byte	-85
+ 801 0068 7B       		.byte	123
+ 802 0069 DC       		.byte	-36
+ 803 006a D9       		.byte	-39
+ 804 006b BD       		.byte	-67
+ 805 006c 82       		.byte	-126
+ 806 006d 38       		.byte	56
+ 807 006e 07       		.byte	7
+ 808 006f 7E       		.byte	126
+ 809 0070 B5       		.byte	-75
+ 810 0071 9A       		.byte	-102
+ 811 0072 1F       		.byte	31
+ 812 0073 F3       		.byte	-13
+ 813 0074 44       		.byte	68
+ 814 0075 F6       		.byte	-10
+ 815 0076 41       		.byte	65
+ 816 0077 30       		.byte	48
+ 817 0078 4C       		.byte	76
+ 818 0079 67       		.byte	103
+ 819 007a EE       		.byte	-18
+ 820 007b 12       		.byte	18
+ 821 007c 21       		.byte	33
+ 822 007d 8B       		.byte	-117
+ 823 007e A8       		.byte	-88
+ 824 007f D5       		.byte	-43
+ 825 0080 55       		.byte	85
+ 826 0081 6E       		.byte	110
+ 827 0082 E7       		.byte	-25
+ 828 0083 0B       		.byte	11
+ 829 0084 28       		.byte	40
+ 830 0085 92       		.byte	-110
+ 831 0086 A1       		.byte	-95
+ 832 0087 CC       		.byte	-52
+ 833 0088 2B       		.byte	43
+ 834 0089 08       		.byte	8
+ 835 008a 91       		.byte	-111
+ 836 008b ED       		.byte	-19
+ 837 008c D6       		.byte	-42
+ 838 008d 64       		.byte	100
+ 839 008e 4F       		.byte	79
+ 840 008f A2       		.byte	-94
+ 841 0090 BC       		.byte	-68
+ 842 0091 83       		.byte	-125
+ 843 0092 06       		.byte	6
+ 844 0093 FA       		.byte	-6
+ 845 0094 5D       		.byte	93
+ 846 0095 FF       		.byte	-1
+ 847 0096 58       		.byte	88
+ 848 0097 39       		.byte	57
+ 849 0098 72       		.byte	114
+ 850 0099 C5       		.byte	-59
+ 851 009a C0       		.byte	-64
+ 852 009b B4       		.byte	-76
+ 853 009c 9B       		.byte	-101
+ 854 009d 31       		.byte	49
+ 855 009e 1E       		.byte	30
+ 856 009f 77       		.byte	119
+ 857 00a0 01       		.byte	1
+ 858 00a1 3E       		.byte	62
+ 859 00a2 BB       		.byte	-69
+ 860 00a3 DF       		.byte	-33
+ 861 00a4 78       		.byte	120
+ 862 00a5 DA       		.byte	-38
+ 863 00a6 7D       		.byte	125
+ 864 00a7 84       		.byte	-124
+ 865 00a8 50       		.byte	80
+ 866 00a9 6B       		.byte	107
+ 867 00aa E2       		.byte	-30
+ 868 00ab 8E       		.byte	-114
+ 869 00ac AD       		.byte	-83
+ 870 00ad 17       		.byte	23
+ 871 00ae 24       		.byte	36
+ 872 00af C9       		.byte	-55
+ 873 00b0 AE       		.byte	-82
+ 874 00b1 8D       		.byte	-115
+ 875 00b2 14       		.byte	20
+ 876 00b3 E8       		.byte	-24
+ 877 00b4 D3       		.byte	-45
+ 878 00b5 61       		.byte	97
+ 879 00b6 4A       		.byte	74
+ 880 00b7 27       		.byte	39
+ 881 00b8 47       		.byte	71
+ 882 00b9 F0       		.byte	-16
+ 883 00ba F5       		.byte	-11
+ 884 00bb 19       		.byte	25
+ 885 00bc 36       		.byte	54
+ 886 00bd 9C       		.byte	-100
+ 887 00be B3       		.byte	-77
+ 888 00bf 42       		.byte	66
+ 889 00c0 1D       		.byte	29
+ 890 00c1 32       		.byte	50
+ 891 00c2 B7       		.byte	-73
+ 892 00c3 43       		.byte	67
+ 893 00c4 F4       		.byte	-12
+ 894 00c5 46       		.byte	70
+ 895 00c6 F1       		.byte	-15
+ 896 00c7 98       		.byte	-104
+ 897 00c8 EC       		.byte	-20
+ 898 00c9 D7       		.byte	-41
+ 899 00ca 4E       		.byte	78
+ 900 00cb AA       		.byte	-86
+ 901 00cc 89       		.byte	-119
+ 902 00cd 23       		.byte	35
+ 903 00ce 10       		.byte	16
+ 904 00cf 65       		.byte	101
+ 905 00d0 8A       		.byte	-118
+ 906 00d1 A9       		.byte	-87
+ 907 00d2 20       		.byte	32
+ 908 00d3 54       		.byte	84
+ 909 00d4 6F       		.byte	111
+ 910 00d5 CD       		.byte	-51
+ 911 00d6 E6       		.byte	-26
+ 912 00d7 13       		.byte	19
+ 913 00d8 DB       		.byte	-37
+ 914 00d9 7C       		.byte	124
+ 915 00da 79       		.byte	121
+ 916 00db 05       		.byte	5
+ 917 00dc 3A       		.byte	58
+ 918 00dd 80       		.byte	-128
+ 919 00de BF       		.byte	-65
+ 920 00df DE       		.byte	-34
+ 921 00e0 E9       		.byte	-23
+ 922 00e1 D2       		.byte	-46
+ 923 00e2 4B       		.byte	75
+ 924 00e3 2F       		.byte	47
+ 925 00e4 0C       		.byte	12
+ 926 00e5 A6       		.byte	-90
+ 927 00e6 95       		.byte	-107
+ 928 00e7 60       		.byte	96
+ 929 00e8 0F       		.byte	15
+ 930 00e9 2C       		.byte	44
+ 931 00ea A5       		.byte	-91
+ 932 00eb 51       		.byte	81
+ 933 00ec 6A       		.byte	106
+ 934 00ed C8       		.byte	-56
+ 935 00ee E3       		.byte	-29
+ 936 00ef 96       		.byte	-106
+ 937 00f0 B0       		.byte	-80
+ 938 00f1 9F       		.byte	-97
+ 939 00f2 1A       		.byte	26
+ 940 00f3 76       		.byte	118
+ 941 00f4 C1       		.byte	-63
+ 942 00f5 73       		.byte	115
+ 943 00f6 C4       		.byte	-60
+ 944 00f7 35       		.byte	53
+ 945 00f8 FE       		.byte	-2
+ 946 00f9 59       		.byte	89
+ 947 00fa 5C       		.byte	92
+ 948 00fb B8       		.byte	-72
+ 949 00fc 87       		.byte	-121
+ 950 00fd 3D       		.byte	61
+ 951 00fe 02       		.byte	2
+ 952 00ff FB       		.byte	-5
+ 953              		.bss
+ 954              		.align	2
+ 955              		.set	.LANCHOR0,. + 0
+ 958              	MASTER_KEY:
+ 959 0000 00000000 		.space	16
+ 959      00000000 
+ 959      00000000 
+ 959      00000000 
+ 962              	ROUND_KEY:
+ 963 0010 00000000 		.space	112
+ 963      00000000 
+ 963      00000000 
+ 963      00000000 
+ 963      00000000 
+ 966              	PLAIN_TEXT:
+ 967 0080 00000000 		.space	8
+ 967      00000000 
+ 970              	CIPHER_TEXT:
+ 971 0088 00000000 		.space	8
+ 971      00000000 
+ 972              		.text
+ 973              	.Letext0:
+ 974              		.file 2 "/usr/include/newlib/machine/_default_types.h"
+ 975              		.file 3 "/usr/include/newlib/sys/_stdint.h"
+ 976              		.file 4 "/usr/include/newlib/time.h"
+ 977              		.file 5 "/usr/include/newlib/stdlib.h"
+ 978              		.file 6 ".././hal/stm32f3/stm32f3_hal.h"
+ 979              		.file 7 ".././simpleserial/simpleserial.h"
+ 980              		.file 8 ".././hal/hal.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 simpleserial-base.c
+     /tmp/ccIeCWkY.s:20     .text.reset:0000000000000000 $t
+     /tmp/ccIeCWkY.s:25     .text.reset:0000000000000000 reset
+     /tmp/ccIeCWkY.s:42     .text.get_key:0000000000000000 $t
+     /tmp/ccIeCWkY.s:47     .text.get_key:0000000000000000 get_key
+     /tmp/ccIeCWkY.s:59     .text.ROUND_KEY_GEN:0000000000000000 $t
+     /tmp/ccIeCWkY.s:64     .text.ROUND_KEY_GEN:0000000000000000 ROUND_KEY_GEN
+     /tmp/ccIeCWkY.s:161    .text.ROUND_KEY_GEN:0000000000000098 $d
+     /tmp/ccIeCWkY.s:169    .text.keyadd:0000000000000000 $t
+     /tmp/ccIeCWkY.s:174    .text.keyadd:0000000000000000 keyadd
+     /tmp/ccIeCWkY.s:227    .text.convert:0000000000000000 $t
+     /tmp/ccIeCWkY.s:232    .text.convert:0000000000000000 convert
+     /tmp/ccIeCWkY.s:303    .text.sbox_TLU:0000000000000000 $t
+     /tmp/ccIeCWkY.s:308    .text.sbox_TLU:0000000000000000 sbox_TLU
+     /tmp/ccIeCWkY.s:353    .text.sbox_TLU:0000000000000024 $d
+     /tmp/ccIeCWkY.s:358    .text.pbox:0000000000000000 $t
+     /tmp/ccIeCWkY.s:363    .text.pbox:0000000000000000 pbox
+     /tmp/ccIeCWkY.s:423    .text.get_pt:0000000000000000 $t
+     /tmp/ccIeCWkY.s:428    .text.get_pt:0000000000000000 get_pt
+     /tmp/ccIeCWkY.s:565    .text.get_pt:00000000000000d0 $d
+     /tmp/ccIeCWkY.s:572    .text.ENC_TLU:0000000000000000 $t
+     /tmp/ccIeCWkY.s:577    .text.ENC_TLU:0000000000000000 ENC_TLU
+     /tmp/ccIeCWkY.s:626    .text.startup.main:0000000000000000 $t
+     /tmp/ccIeCWkY.s:631    .text.startup.main:0000000000000000 main
+     /tmp/ccIeCWkY.s:681    .text.startup.main:0000000000000038 $d
+     /tmp/ccIeCWkY.s:696    .data:0000000000000000 Sbox
+     /tmp/ccIeCWkY.s:970    .bss:0000000000000088 CIPHER_TEXT
+     /tmp/ccIeCWkY.s:966    .bss:0000000000000080 PLAIN_TEXT
+     /tmp/ccIeCWkY.s:962    .bss:0000000000000010 ROUND_KEY
+     /tmp/ccIeCWkY.s:958    .bss:0000000000000000 MASTER_KEY
+     /tmp/ccIeCWkY.s:954    .bss:0000000000000000 $d
+                     .debug_frame:0000000000000010 $d
+
+UNDEFINED SYMBOLS
+time
+srand
+rand
+trigger_high
+trigger_low
+simpleserial_put
+platform_init
+init_uart
+trigger_setup
+simpleserial_init
+simpleserial_addcmd
+simpleserial_get

@@ -1,0 +1,1621 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m4
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 4
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.syntax unified
+  15              		.file	"simpleserial-base.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.reset,"ax",%progbits
+  20              		.align	1
+  21              		.global	reset
+  22              		.thumb
+  23              		.thumb_func
+  25              	reset:
+  26              	.LFB5:
+  27              		.file 1 "simpleserial-base.c"
+   1:simpleserial-base.c **** /*
+   2:simpleserial-base.c ****     This file is part of the ChipWhisperer Example Targets
+   3:simpleserial-base.c ****     Copyright (C) 2012-2017 NewAE Technology Inc.
+   4:simpleserial-base.c **** 
+   5:simpleserial-base.c ****     This program is free software: you can redistribute it and/or modify
+   6:simpleserial-base.c ****     it under the terms of the GNU General Public License as published by
+   7:simpleserial-base.c ****     the Free Software Foundation, either version 3 of the License, or
+   8:simpleserial-base.c ****     (at your option) any later version.
+   9:simpleserial-base.c **** 
+  10:simpleserial-base.c ****     This program is distributed in the hope that it will be useful,
+  11:simpleserial-base.c ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  12:simpleserial-base.c ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  13:simpleserial-base.c ****     GNU General Public License for more details.
+  14:simpleserial-base.c **** 
+  15:simpleserial-base.c ****     You should have received a copy of the GNU General Public License
+  16:simpleserial-base.c ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  17:simpleserial-base.c **** */
+  18:simpleserial-base.c **** 
+  19:simpleserial-base.c **** #include "hal.h"
+  20:simpleserial-base.c **** #include <stdint.h>
+  21:simpleserial-base.c **** #include <stdlib.h>
+  22:simpleserial-base.c **** 
+  23:simpleserial-base.c **** #include "simpleserial.h"
+  24:simpleserial-base.c **** unsigned char SEED_S1box[256] = {
+  25:simpleserial-base.c **** 	0xa9, 0x85, 0xd6, 0xd3, 0x54, 0x1d, 0xac, 0x25, 0x5d, 0x43, 0x18, 0x1e, 0x51, 0xfc, 0xca, 0x63,
+  26:simpleserial-base.c **** 	0x28, 0x44, 0x20, 0x9d, 0xe0, 0xe2, 0xc8, 0x17, 0xa5, 0x8f, 0x03, 0x7b, 0xbb, 0x13, 0xd2, 0xee,
+  27:simpleserial-base.c **** 	0x70, 0x8c, 0x3f, 0xa8, 0x32, 0xdd, 0xf6, 0x74, 0xec, 0x95, 0x0b, 0x57, 0x5c, 0x5b, 0xbd, 0x01,
+  28:simpleserial-base.c **** 	0x24, 0x1c, 0x73, 0x98, 0x10, 0xcc, 0xf2, 0xd9, 0x2c, 0xe7, 0x72, 0x83, 0x9b, 0xd1, 0x86, 0xc9,
+  29:simpleserial-base.c **** 	0x60, 0x50, 0xa3, 0xeb, 0x0d, 0xb6, 0x9e, 0x4f, 0xb7, 0x5a, 0xc6, 0x78, 0xa6, 0x12, 0xaf, 0xd5,
+  30:simpleserial-base.c **** 	0x61, 0xc3, 0xb4, 0x41, 0x52, 0x7d, 0x8d, 0x08, 0x1f, 0x99, 0x00, 0x19, 0x04, 0x53, 0xf7, 0xe1,
+  31:simpleserial-base.c **** 	0xfd, 0x76, 0x2f, 0x27, 0xb0, 0x8b, 0x0e, 0xab, 0xa2, 0x6e, 0x93, 0x4d, 0x69, 0x7c, 0x09, 0x0a,
+  32:simpleserial-base.c **** 	0xbf, 0xef, 0xf3, 0xc5, 0x87, 0x14, 0xfe, 0x64, 0xde, 0x2e, 0x4b, 0x1a, 0x06, 0x21, 0x6b, 0x66,
+  33:simpleserial-base.c **** 	0x02, 0xf5, 0x92, 0x8a, 0x0c, 0xb3, 0x7e, 0xd0, 0x7a, 0x47, 0x96, 0xe5, 0x26, 0x80, 0xad, 0xdf,
+  34:simpleserial-base.c **** 	0xa1, 0x30, 0x37, 0xae, 0x36, 0x15, 0x22, 0x38, 0xf4, 0xa7, 0x45, 0x4c, 0x81, 0xe9, 0x84, 0x97,
+  35:simpleserial-base.c **** 	0x35, 0xcb, 0xce, 0x3c, 0x71, 0x11, 0xc7, 0x89, 0x75, 0xfb, 0xda, 0xf8, 0x94, 0x59, 0x82, 0xc4,
+  36:simpleserial-base.c **** 	0xff, 0x49, 0x39, 0x67, 0xc0, 0xcf, 0xd7, 0xb8, 0x0f, 0x8e, 0x42, 0x23, 0x91, 0x6c, 0xdb, 0xa4,
+  37:simpleserial-base.c **** 	0x34, 0xf1, 0x48, 0xc2, 0x6f, 0x3d, 0x2d, 0x40, 0xbe, 0x3e, 0xbc, 0xc1, 0xaa, 0xba, 0x4e, 0x55,
+  38:simpleserial-base.c **** 	0x3b, 0xdc, 0x68, 0x7f, 0x9c, 0xd8, 0x4a, 0x56, 0x77, 0xa0, 0xed, 0x46, 0xb5, 0x2b, 0x65, 0xfa,
+  39:simpleserial-base.c **** 	0xe3, 0xb9, 0xb1, 0x9f, 0x5e, 0xf9, 0xe6, 0xb2, 0x31, 0xea, 0x6d, 0x5f, 0xe4, 0xf0, 0xcd, 0x88,
+  40:simpleserial-base.c **** 	0x16, 0x3a, 0x58, 0xd4, 0x62, 0x29, 0x07, 0x33, 0xe8, 0x1b, 0x05, 0x79, 0x90, 0x6a, 0x2a, 0x9a };
+  41:simpleserial-base.c **** unsigned char SEED_S2box[256] = {
+  42:simpleserial-base.c **** 	0x38, 0xe8, 0x2d, 0xa6, 0xcf, 0xde, 0xb3, 0xb8, 0xaf, 0x60, 0x55, 0xc7, 0x44, 0x6f, 0x6b, 0x5b,
+  43:simpleserial-base.c **** 	0xc3, 0x62, 0x33, 0xb5, 0x29, 0xa0, 0xe2, 0xa7, 0xd3, 0x91, 0x11, 0x06, 0x1c, 0xbc, 0x36, 0x4b,
+  44:simpleserial-base.c **** 	0xef, 0x88, 0x6c, 0xa8, 0x17, 0xc4, 0x16, 0xf4, 0xc2, 0x45, 0xe1, 0xd6, 0x3f, 0x3d, 0x8e, 0x98,
+  45:simpleserial-base.c **** 	0x28, 0x4e, 0xf6, 0x3e, 0xa5, 0xf9, 0x0d, 0xdf, 0xd8, 0x2b, 0x66, 0x7a, 0x27, 0x2f, 0xf1, 0x72,
+  46:simpleserial-base.c **** 	0x42, 0xd4, 0x41, 0xc0, 0x73, 0x67, 0xac, 0x8b, 0xf7, 0xad, 0x80, 0x1f, 0xca, 0x2c, 0xaa, 0x34,
+  47:simpleserial-base.c **** 	0xd2, 0x0b, 0xee, 0xe9, 0x5d, 0x94, 0x18, 0xf8, 0x57, 0xae, 0x08, 0xc5, 0x13, 0xcd, 0x86, 0xb9,
+  48:simpleserial-base.c **** 	0xff, 0x7d, 0xc1, 0x31, 0xf5, 0x8a, 0x6a, 0xb1, 0xd1, 0x20, 0xd7, 0x02, 0x22, 0x04, 0x68, 0x71,
+  49:simpleserial-base.c **** 	0x07, 0xdb, 0x9d, 0x99, 0x61, 0xbe, 0xe6, 0x59, 0xdd, 0x51, 0x90, 0xdc, 0x9a, 0xa3, 0xab, 0xd0,
+  50:simpleserial-base.c **** 	0x81, 0x0f, 0x47, 0x1a, 0xe3, 0xec, 0x8d, 0xbf, 0x96, 0x7b, 0x5c, 0xa2, 0xa1, 0x63, 0x23, 0x4d,
+  51:simpleserial-base.c **** 	0xc8, 0x9e, 0x9c, 0x3a, 0x0c, 0x2e, 0xba, 0x6e, 0x9f, 0x5a, 0xf2, 0x92, 0xf3, 0x49, 0x78, 0xcc,
+  52:simpleserial-base.c **** 	0x15, 0xfb, 0x70, 0x75, 0x7f, 0x35, 0x10, 0x03, 0x64, 0x6d, 0xc6, 0x74, 0xd5, 0xb4, 0xea, 0x09,
+  53:simpleserial-base.c **** 	0x76, 0x19, 0xfe, 0x40, 0x12, 0xe0, 0xbd, 0x05, 0xfa, 0x01, 0xf0, 0x2a, 0x5e, 0xa9, 0x56, 0x43,
+  54:simpleserial-base.c **** 	0x85, 0x14, 0x89, 0x9b, 0xb0, 0xe5, 0x48, 0x79, 0x97, 0xfc, 0x1e, 0x82, 0x21, 0x8c, 0x1b, 0x5f,
+  55:simpleserial-base.c **** 	0x77, 0x54, 0xb2, 0x1d, 0x25, 0x4f, 0x00, 0x46, 0xed, 0x58, 0x52, 0xeb, 0x7e, 0xda, 0xc9, 0xfd,
+  56:simpleserial-base.c **** 	0x30, 0x95, 0x65, 0x3c, 0xb6, 0xe4, 0xbb, 0x7c, 0x0e, 0x50, 0x39, 0x26, 0x32, 0x84, 0x69, 0x93,
+  57:simpleserial-base.c **** 	0x37, 0xe7, 0x24, 0xa4, 0xcb, 0x53, 0x0a, 0x87, 0xd9, 0x4c, 0x83, 0x8f, 0xce, 0x3b, 0x4a, 0xb7 };
+  58:simpleserial-base.c **** 
+  59:simpleserial-base.c **** const unsigned long SEED_KC[16] = {
+  60:simpleserial-base.c **** 	0x9e3779b9 , 0x3c6ef373,
+  61:simpleserial-base.c **** 	0x78dde6e6 , 0xf1bbcdcc,
+  62:simpleserial-base.c **** 	0xe3779b99 , 0xc6ef3733,
+  63:simpleserial-base.c **** 	0x8dde6e67 , 0x1bbcdccf,
+  64:simpleserial-base.c **** 	0x3779b99e , 0x6ef3733c,
+  65:simpleserial-base.c **** 	0xdde6e678 , 0xbbcdccf1,
+  66:simpleserial-base.c **** 	0x779b99e3 , 0xef3733c6,
+  67:simpleserial-base.c **** 	0xde6e678d , 0xbcdccf1b
+  68:simpleserial-base.c **** };
+  69:simpleserial-base.c **** void SEED_G(unsigned long *s) { // s는 그전에 넘어온것 s = 32bit  x0 = 8bit
+  70:simpleserial-base.c ****     unsigned char m[4];
+  71:simpleserial-base.c ****     m[0] = 0xfc;
+  72:simpleserial-base.c ****     m[1] = 0xf3;
+  73:simpleserial-base.c ****     m[2] = 0xcf;
+  74:simpleserial-base.c ****     m[3] = 0x3f;
+  75:simpleserial-base.c **** 	unsigned long z[4];
+  76:simpleserial-base.c **** 	unsigned char y[4];
+  77:simpleserial-base.c **** 	unsigned long temp = 0;
+  78:simpleserial-base.c **** 
+  79:simpleserial-base.c **** 	y[0] = SEED_S1box[((*s) >> 0) & 0xff];
+  80:simpleserial-base.c **** 	y[1] = SEED_S2box[((*s) >> 8) & 0xff];
+  81:simpleserial-base.c **** 	y[2] = SEED_S1box[((*s) >> 16) & 0xff];
+  82:simpleserial-base.c **** 	y[3] = SEED_S2box[((*s) >> 24) & 0xff];
+  83:simpleserial-base.c **** 
+  84:simpleserial-base.c **** 	z[3] = (y[0] & m[3]) ^ (y[1] & m[0]) ^ (y[2] & m[1]) ^ (y[3] & m[2]); // 0x3f 0xfc 0xf3 0xcf
+  85:simpleserial-base.c **** 	z[2] = (y[0] & m[2]) ^ (y[1] & m[3]) ^ (y[2] & m[0]) ^ (y[3] & m[1]); // 0xcf 0x3f 0xfc 0xf3
+  86:simpleserial-base.c **** 	z[1] = (y[0] & m[1]) ^ (y[1] & m[2]) ^ (y[2] & m[3]) ^ (y[3] & m[0]); // 0xf3 0xcf 0x3f 0xfc 
+  87:simpleserial-base.c **** 	z[0] = (y[0] & m[0]) ^ (y[1] & m[1]) ^ (y[2] & m[2]) ^ (y[3] & m[3]); // 0xfc 0xf3 0xcf 0x3f
+  88:simpleserial-base.c **** 
+  89:simpleserial-base.c **** 	temp ^= z[0];
+  90:simpleserial-base.c **** 	temp ^= (z[1] << 8);
+  91:simpleserial-base.c **** 	temp ^= (z[2] << 16);
+  92:simpleserial-base.c **** 	temp ^= (z[3] << 24);
+  93:simpleserial-base.c **** 	*s = temp;
+  94:simpleserial-base.c **** }
+  95:simpleserial-base.c **** 
+  96:simpleserial-base.c **** void KeyGen(unsigned long A , unsigned long B , unsigned long C, unsigned long D ,unsigned long RK[
+  97:simpleserial-base.c ****     
+  98:simpleserial-base.c ****     int i;
+  99:simpleserial-base.c ****     unsigned char tmp1;
+ 100:simpleserial-base.c ****     unsigned char tmp2;
+ 101:simpleserial-base.c ****     unsigned long T0;
+ 102:simpleserial-base.c ****     unsigned long T1;
+ 103:simpleserial-base.c ****     for(i = 0 ; i < 16 ; i ++)
+ 104:simpleserial-base.c ****     {
+ 105:simpleserial-base.c ****         T0 = A + C - SEED_KC[i];
+ 106:simpleserial-base.c ****         T1 = C - D + SEED_KC[i];
+ 107:simpleserial-base.c ****         
+ 108:simpleserial-base.c ****         SEED_G(&T0);
+ 109:simpleserial-base.c ****         SEED_G(&T1);
+ 110:simpleserial-base.c ****         RK[i][0] = T0;
+ 111:simpleserial-base.c ****         RK[i][1] = T1;
+ 112:simpleserial-base.c ****         if(i % 2 == 0){
+ 113:simpleserial-base.c ****             tmp1 = A & 0xff;
+ 114:simpleserial-base.c ****             tmp2 = B & 0xff;
+ 115:simpleserial-base.c ****             A = (A >> 8) ^ (tmp2 << 24);
+ 116:simpleserial-base.c ****             B = (B >> 8) ^ (tmp1 << 24);
+ 117:simpleserial-base.c ****        
+ 118:simpleserial-base.c ****         }
+ 119:simpleserial-base.c ****         else{
+ 120:simpleserial-base.c ****             tmp1 = (C >>24) & 0xff;
+ 121:simpleserial-base.c ****             tmp2 = (D >> 24) & 0xff;
+ 122:simpleserial-base.c ****             C = (C << 8) ^ tmp2;
+ 123:simpleserial-base.c ****             D = (D << 8) ^ tmp1;
+ 124:simpleserial-base.c ****         }
+ 125:simpleserial-base.c ****     
+ 126:simpleserial-base.c ****     }
+ 127:simpleserial-base.c **** }
+ 128:simpleserial-base.c ****     
+ 129:simpleserial-base.c **** void SEED_F(unsigned long L[2] , unsigned long R[2] , unsigned long k[2]){
+ 130:simpleserial-base.c ****     unsigned long temp[2]; // 16비트
+ 131:simpleserial-base.c **** 	temp[0] = R[0] ^ k[0];
+ 132:simpleserial-base.c **** 	temp[1] = R[1] ^ k[1];
+ 133:simpleserial-base.c **** 
+ 134:simpleserial-base.c **** 	temp[1] ^= temp[0];
+ 135:simpleserial-base.c **** 
+ 136:simpleserial-base.c **** 	SEED_G(temp + 1); // temp[1]의 pointer를 전달
+ 137:simpleserial-base.c **** 	temp[0] += temp[1];
+ 138:simpleserial-base.c **** 
+ 139:simpleserial-base.c **** 	SEED_G(temp);
+ 140:simpleserial-base.c **** 	temp[1] += temp[0];
+ 141:simpleserial-base.c **** 
+ 142:simpleserial-base.c **** 	SEED_G(temp + 1);
+ 143:simpleserial-base.c **** 	temp[0] += temp[1];
+ 144:simpleserial-base.c **** 
+ 145:simpleserial-base.c **** 
+ 146:simpleserial-base.c **** 	L[0] ^= temp[0]; // temp[0] = R[0] 
+ 147:simpleserial-base.c **** 	L[1] ^= temp[1];
+ 148:simpleserial-base.c ****         
+ 149:simpleserial-base.c **** }
+ 150:simpleserial-base.c ****     
+ 151:simpleserial-base.c **** uint8_t get_key(uint8_t* k)
+ 152:simpleserial-base.c **** {
+ 153:simpleserial-base.c **** 	// Load key here
+ 154:simpleserial-base.c **** 	return 0x00;
+ 155:simpleserial-base.c **** }
+ 156:simpleserial-base.c **** 
+ 157:simpleserial-base.c **** #if SS_VER == SS_VER_2_0
+ 158:simpleserial-base.c **** uint8_t get_pt(uint8_t cmd, uint8_t scmd, uint8_t len, uint8_t* pt)
+ 159:simpleserial-base.c **** #else
+ 160:simpleserial-base.c **** uint8_t get_pt(uint8_t* pt)
+ 161:simpleserial-base.c **** #endif
+ 162:simpleserial-base.c **** {
+ 163:simpleserial-base.c **** 	
+ 164:simpleserial-base.c ****     unsigned long A = 0x00000000;
+ 165:simpleserial-base.c ****     unsigned long B = 0x00000000;
+ 166:simpleserial-base.c ****     unsigned long C = 0x00000000;
+ 167:simpleserial-base.c ****     unsigned long D = 0x00000000;
+ 168:simpleserial-base.c ****     int i;
+ 169:simpleserial-base.c ****     unsigned long RK[16][2];
+ 170:simpleserial-base.c ****     unsigned long L[2] ,R[2];
+ 171:simpleserial-base.c ****     L[0] = (pt[0] << 24) ^ (pt[1] << 16)  ^ (pt[2] << 8)  ^ pt[3];
+ 172:simpleserial-base.c ****     L[1] = (pt[4] << 24) ^ (pt[5] << 16)  ^ (pt[6] << 8)  ^ pt[7];
+ 173:simpleserial-base.c ****     R[0] = (pt[8] << 24) ^ (pt[9] << 16)  ^ (pt[10] << 8)  ^ pt[11];
+ 174:simpleserial-base.c ****     R[1] = (pt[12] << 24) ^ (pt[13] << 16)  ^ (pt[14] << 8)  ^ pt[15];
+ 175:simpleserial-base.c ****     
+ 176:simpleserial-base.c ****     KeyGen(A, B ,C ,D ,RK);
+ 177:simpleserial-base.c **** 	trigger_high();
+ 178:simpleserial-base.c **** 	
+ 179:simpleserial-base.c **** 	//16 hex bytes held in 'pt' were sent
+ 180:simpleserial-base.c **** 	//from the computer. Store your response
+ 181:simpleserial-base.c **** 	//back into 'pt', which will send 16 bytes
+ 182:simpleserial-base.c **** 	//back to computer. Can ignore of course if
+ 183:simpleserial-base.c **** 	//not needed
+ 184:simpleserial-base.c ****     
+ 185:simpleserial-base.c ****     SEED_F(L, R, RK[0]);
+ 186:simpleserial-base.c ****     SEED_F(R, L, RK[1]);
+ 187:simpleserial-base.c ****     SEED_F(L, R, RK[2]);
+ 188:simpleserial-base.c ****     SEED_F(R, L, RK[3]);
+ 189:simpleserial-base.c ****     SEED_F(L, R, RK[4]);
+ 190:simpleserial-base.c ****     SEED_F(R, L, RK[5]);
+ 191:simpleserial-base.c ****     SEED_F(L, R, RK[6]);
+ 192:simpleserial-base.c ****     SEED_F(R, L, RK[7]);
+ 193:simpleserial-base.c ****     SEED_F(L, R, RK[8]);
+ 194:simpleserial-base.c ****     SEED_F(R, L, RK[9]);
+ 195:simpleserial-base.c ****     SEED_F(L, R, RK[10]);
+ 196:simpleserial-base.c ****     SEED_F(R, L, RK[11]);
+ 197:simpleserial-base.c ****     SEED_F(L, R, RK[12]);
+ 198:simpleserial-base.c ****     SEED_F(R, L, RK[13]);
+ 199:simpleserial-base.c ****     SEED_F(L, R, RK[14]);
+ 200:simpleserial-base.c ****     SEED_F(R, L, RK[15]);
+ 201:simpleserial-base.c ****     
+ 202:simpleserial-base.c ****     
+ 203:simpleserial-base.c **** 	
+ 204:simpleserial-base.c ****     
+ 205:simpleserial-base.c **** 	trigger_low();
+ 206:simpleserial-base.c ****     
+ 207:simpleserial-base.c ****     pt[0] = R[0] >>24 &0xff;
+ 208:simpleserial-base.c ****     pt[1] = R[0] >>16 &0xff;
+ 209:simpleserial-base.c ****     pt[2] = R[0] >>8 &0xff;
+ 210:simpleserial-base.c ****     pt[3] = R[0]  &0xff;
+ 211:simpleserial-base.c ****     pt[4] = R[1] >>24 &0xff;
+ 212:simpleserial-base.c ****     pt[5] = R[1] >>16 &0xff;
+ 213:simpleserial-base.c ****     pt[6] = R[1] >>8 &0xff;
+ 214:simpleserial-base.c ****     pt[7] = R[1]  &0xff;
+ 215:simpleserial-base.c ****     pt[8] = L[0] >>24 &0xff;
+ 216:simpleserial-base.c ****     pt[9] = L[0] >>16 &0xff;
+ 217:simpleserial-base.c ****     pt[10] = L[0] >>8 &0xff;
+ 218:simpleserial-base.c ****     pt[11] = L[0]  &0xff;
+ 219:simpleserial-base.c ****     pt[12] = L[1] >>24 &0xff;
+ 220:simpleserial-base.c ****     pt[13] = L[1] >>16 &0xff;
+ 221:simpleserial-base.c ****     pt[14] = L[1] >>8 &0xff;
+ 222:simpleserial-base.c ****     pt[15] = L[1] &0xff;
+ 223:simpleserial-base.c ****     
+ 224:simpleserial-base.c ****     
+ 225:simpleserial-base.c **** 	/* End user-specific code here. *
+ 226:simpleserial-base.c **** 	********************************/
+ 227:simpleserial-base.c **** 	simpleserial_put('r', 16, pt);
+ 228:simpleserial-base.c **** 	return 0x00;
+ 229:simpleserial-base.c **** }
+ 230:simpleserial-base.c **** 
+ 231:simpleserial-base.c **** uint8_t reset(uint8_t* x)
+ 232:simpleserial-base.c **** {
+  28              		.loc 1 232 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  33              	.LVL0:
+ 233:simpleserial-base.c **** 	// Reset key here if needed
+ 234:simpleserial-base.c **** 	return 0x00;
+ 235:simpleserial-base.c **** }
+  34              		.loc 1 235 0
+  35 0000 0020     		movs	r0, #0
+  36              	.LVL1:
+  37 0002 7047     		bx	lr
+  38              		.cfi_endproc
+  39              	.LFE5:
+  41              		.section	.text.get_key,"ax",%progbits
+  42              		.align	1
+  43              		.global	get_key
+  44              		.thumb
+  45              		.thumb_func
+  47              	get_key:
+  48              	.LFB8:
+  49              		.cfi_startproc
+  50              		@ args = 0, pretend = 0, frame = 0
+  51              		@ frame_needed = 0, uses_anonymous_args = 0
+  52              		@ link register save eliminated.
+  53 0000 0020     		movs	r0, #0
+  54 0002 7047     		bx	lr
+  55              		.cfi_endproc
+  56              	.LFE8:
+  58              		.section	.text.SEED_G,"ax",%progbits
+  59              		.align	1
+  60              		.global	SEED_G
+  61              		.thumb
+  62              		.thumb_func
+  64              	SEED_G:
+  65              	.LFB0:
+  69:simpleserial-base.c ****     unsigned char m[4];
+  66              		.loc 1 69 0
+  67              		.cfi_startproc
+  68              		@ args = 0, pretend = 0, frame = 0
+  69              		@ frame_needed = 0, uses_anonymous_args = 0
+  70              	.LVL2:
+  69:simpleserial-base.c ****     unsigned char m[4];
+  71              		.loc 1 69 0
+  72 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+  73              	.LCFI0:
+  74              		.cfi_def_cfa_offset 20
+  75              		.cfi_offset 4, -20
+  76              		.cfi_offset 5, -16
+  77              		.cfi_offset 6, -12
+  78              		.cfi_offset 7, -8
+  79              		.cfi_offset 14, -4
+  79:simpleserial-base.c **** 	y[1] = SEED_S2box[((*s) >> 8) & 0xff];
+  80              		.loc 1 79 0
+  81 0002 0468     		ldr	r4, [r0]
+  82 0004 2249     		ldr	r1, .L4
+  83 0006 E3B2     		uxtb	r3, r4
+  84 0008 11F803E0 		ldrb	lr, [r1, r3]	@ zero_extendqisi2
+  85              	.LVL3:
+  80:simpleserial-base.c **** 	y[2] = SEED_S1box[((*s) >> 16) & 0xff];
+  86              		.loc 1 80 0
+  87 000c C4F30723 		ubfx	r3, r4, #8, #8
+  88 0010 0B44     		add	r3, r3, r1
+  91:simpleserial-base.c **** 	temp ^= (z[3] << 24);
+  89              		.loc 1 91 0
+  90 0012 2EF00C06 		bic	r6, lr, #12
+  80:simpleserial-base.c **** 	y[2] = SEED_S1box[((*s) >> 16) & 0xff];
+  91              		.loc 1 80 0
+  92 0016 93F80021 		ldrb	r2, [r3, #256]	@ zero_extendqisi2
+  93              	.LVL4:
+  81:simpleserial-base.c **** 	y[3] = SEED_S2box[((*s) >> 24) & 0xff];
+  94              		.loc 1 81 0
+  95 001a C4F30743 		ubfx	r3, r4, #16, #8
+  91:simpleserial-base.c **** 	temp ^= (z[3] << 24);
+  96              		.loc 1 91 0
+  97 001e 22F03005 		bic	r5, r2, #48
+  81:simpleserial-base.c **** 	y[3] = SEED_S2box[((*s) >> 24) & 0xff];
+  98              		.loc 1 81 0
+  99 0022 CB5C     		ldrb	r3, [r1, r3]	@ zero_extendqisi2
+ 100              	.LVL5:
+  82:simpleserial-base.c **** 
+ 101              		.loc 1 82 0
+ 102 0024 01EB1461 		add	r1, r1, r4, lsr #24
+  91:simpleserial-base.c **** 	temp ^= (z[3] << 24);
+ 103              		.loc 1 91 0
+ 104 0028 23F00307 		bic	r7, r3, #3
+  82:simpleserial-base.c **** 
+ 105              		.loc 1 82 0
+ 106 002c 91F80011 		ldrb	r1, [r1, #256]	@ zero_extendqisi2
+ 107              	.LVL6:
+  91:simpleserial-base.c **** 	temp ^= (z[3] << 24);
+ 108              		.loc 1 91 0
+ 109 0030 21F00304 		bic	r4, r1, #3
+ 110 0034 7440     		eors	r4, r4, r6
+ 111 0036 6C40     		eors	r4, r4, r5
+ 112 0038 03F03F05 		and	r5, r3, #63
+ 113 003c 6C40     		eors	r4, r4, r5
+ 114 003e 2EF03006 		bic	r6, lr, #48
+ 115 0042 21F00C05 		bic	r5, r1, #12
+ 116 0046 7540     		eors	r5, r5, r6
+ 117 0048 02F03F06 		and	r6, r2, #63
+ 118 004c 7540     		eors	r5, r5, r6
+ 119 004e 7D40     		eors	r5, r5, r7
+ 120 0050 2D04     		lsls	r5, r5, #16
+ 121 0052 45EA0426 		orr	r6, r5, r4, lsl #8
+ 122 0056 2EF00305 		bic	r5, lr, #3
+ 123 005a 01F03F04 		and	r4, r1, #63
+ 124 005e 6C40     		eors	r4, r4, r5
+  93:simpleserial-base.c **** }
+ 125              		.loc 1 93 0
+ 126 0060 0EF03F0E 		and	lr, lr, #63
+ 127              	.LVL7:
+  91:simpleserial-base.c **** 	temp ^= (z[3] << 24);
+ 128              		.loc 1 91 0
+ 129 0064 22F00C05 		bic	r5, r2, #12
+  93:simpleserial-base.c **** }
+ 130              		.loc 1 93 0
+ 131 0068 21F03001 		bic	r1, r1, #48
+ 132              	.LVL8:
+  91:simpleserial-base.c **** 	temp ^= (z[3] << 24);
+ 133              		.loc 1 91 0
+ 134 006c 6C40     		eors	r4, r4, r5
+  93:simpleserial-base.c **** }
+ 135              		.loc 1 93 0
+ 136 006e 8EEA0101 		eor	r1, lr, r1
+  91:simpleserial-base.c **** 	temp ^= (z[3] << 24);
+ 137              		.loc 1 91 0
+ 138 0072 23F03005 		bic	r5, r3, #48
+  93:simpleserial-base.c **** }
+ 139              		.loc 1 93 0
+ 140 0076 22F00302 		bic	r2, r2, #3
+ 141              	.LVL9:
+  91:simpleserial-base.c **** 	temp ^= (z[3] << 24);
+ 142              		.loc 1 91 0
+ 143 007a 6C40     		eors	r4, r4, r5
+  93:simpleserial-base.c **** }
+ 144              		.loc 1 93 0
+ 145 007c 4A40     		eors	r2, r2, r1
+ 146 007e 23F00C03 		bic	r3, r3, #12
+ 147              	.LVL10:
+  91:simpleserial-base.c **** 	temp ^= (z[3] << 24);
+ 148              		.loc 1 91 0
+ 149 0082 7440     		eors	r4, r4, r6
+ 150              	.LVL11:
+  93:simpleserial-base.c **** }
+ 151              		.loc 1 93 0
+ 152 0084 5340     		eors	r3, r3, r2
+ 153 0086 44EA0363 		orr	r3, r4, r3, lsl #24
+ 154 008a 0360     		str	r3, [r0]
+ 155              	.LVL12:
+ 156 008c F0BD     		pop	{r4, r5, r6, r7, pc}
+ 157              	.L5:
+ 158 008e 00BF     		.align	2
+ 159              	.L4:
+ 160 0090 00000000 		.word	.LANCHOR0
+ 161              		.cfi_endproc
+ 162              	.LFE0:
+ 164              		.section	.text.KeyGen,"ax",%progbits
+ 165              		.align	1
+ 166              		.global	KeyGen
+ 167              		.thumb
+ 168              		.thumb_func
+ 170              	KeyGen:
+ 171              	.LFB1:
+  96:simpleserial-base.c ****     
+ 172              		.loc 1 96 0
+ 173              		.cfi_startproc
+ 174              		@ args = 4, pretend = 0, frame = 8
+ 175              		@ frame_needed = 0, uses_anonymous_args = 0
+ 176              	.LVL13:
+ 177 0000 2DE9F347 		push	{r0, r1, r4, r5, r6, r7, r8, r9, r10, lr}
+ 178              	.LCFI1:
+ 179              		.cfi_def_cfa_offset 40
+ 180              		.cfi_offset 4, -32
+ 181              		.cfi_offset 5, -28
+ 182              		.cfi_offset 6, -24
+ 183              		.cfi_offset 7, -20
+ 184              		.cfi_offset 8, -16
+ 185              		.cfi_offset 9, -12
+ 186              		.cfi_offset 10, -8
+ 187              		.cfi_offset 14, -4
+ 188 0004 0A9C     		ldr	r4, [sp, #40]
+ 105:simpleserial-base.c ****         T1 = C - D + SEED_KC[i];
+ 189              		.loc 1 105 0
+ 190 0006 DFF86CA0 		ldr	r10, .L12
+  96:simpleserial-base.c ****     
+ 191              		.loc 1 96 0
+ 192 000a 0746     		mov	r7, r0
+ 193 000c 8946     		mov	r9, r1
+ 194 000e 1646     		mov	r6, r2
+ 195 0010 9846     		mov	r8, r3
+ 196 0012 0434     		adds	r4, r4, #4
+ 103:simpleserial-base.c ****     {
+ 197              		.loc 1 103 0
+ 198 0014 0025     		movs	r5, #0
+ 199              	.LVL14:
+ 200              	.L9:
+ 105:simpleserial-base.c ****         T1 = C - D + SEED_KC[i];
+ 201              		.loc 1 105 0
+ 202 0016 5AF82530 		ldr	r3, [r10, r5, lsl #2]
+ 203 001a BA19     		adds	r2, r7, r6
+ 204 001c D21A     		subs	r2, r2, r3
+ 205 001e 0092     		str	r2, [sp]
+ 106:simpleserial-base.c ****         
+ 206              		.loc 1 106 0
+ 207 0020 C8EB0602 		rsb	r2, r8, r6
+ 208 0024 1344     		add	r3, r3, r2
+ 108:simpleserial-base.c ****         SEED_G(&T1);
+ 209              		.loc 1 108 0
+ 210 0026 6846     		mov	r0, sp
+ 106:simpleserial-base.c ****         
+ 211              		.loc 1 106 0
+ 212 0028 0193     		str	r3, [sp, #4]
+ 108:simpleserial-base.c ****         SEED_G(&T1);
+ 213              		.loc 1 108 0
+ 214 002a FFF7FEFF 		bl	SEED_G
+ 215              	.LVL15:
+ 109:simpleserial-base.c ****         RK[i][0] = T0;
+ 216              		.loc 1 109 0
+ 217 002e 01A8     		add	r0, sp, #4
+ 218 0030 FFF7FEFF 		bl	SEED_G
+ 219              	.LVL16:
+ 110:simpleserial-base.c ****         RK[i][1] = T1;
+ 220              		.loc 1 110 0
+ 221 0034 009B     		ldr	r3, [sp]
+ 222 0036 44F8043C 		str	r3, [r4, #-4]
+ 111:simpleserial-base.c ****         if(i % 2 == 0){
+ 223              		.loc 1 111 0
+ 224 003a 019B     		ldr	r3, [sp, #4]
+ 225 003c 2360     		str	r3, [r4]
+ 112:simpleserial-base.c ****             tmp1 = A & 0xff;
+ 226              		.loc 1 112 0
+ 227 003e EB07     		lsls	r3, r5, #31
+ 228              	.LVL17:
+ 115:simpleserial-base.c ****             B = (B >> 8) ^ (tmp1 << 24);
+ 229              		.loc 1 115 0
+ 230 0040 59BF     		ittee	pl
+ 231 0042 4FEA0963 		lslpl	r3, r9, #24
+ 232              	.LVL18:
+ 116:simpleserial-base.c ****        
+ 233              		.loc 1 116 0
+ 234 0046 3A06     		lslpl	r2, r7, #24
+ 120:simpleserial-base.c ****             tmp2 = (D >> 24) & 0xff;
+ 235              		.loc 1 120 0
+ 236 0048 330E     		lsrmi	r3, r6, #24
+ 237              	.LVL19:
+ 122:simpleserial-base.c ****             D = (D << 8) ^ tmp1;
+ 238              		.loc 1 122 0
+ 239 004a 4FEA1862 		lsrmi	r2, r8, #24
+ 103:simpleserial-base.c ****     {
+ 240              		.loc 1 103 0
+ 241 004e 05F10105 		add	r5, r5, #1
+ 242              	.LVL20:
+ 116:simpleserial-base.c ****        
+ 243              		.loc 1 116 0
+ 244 0052 59BF     		ittee	pl
+ 245 0054 42EA1929 		orrpl	r9, r2, r9, lsr #8
+ 246              	.LVL21:
+ 115:simpleserial-base.c ****             B = (B >> 8) ^ (tmp1 << 24);
+ 247              		.loc 1 115 0
+ 248 0058 43EA1727 		orrpl	r7, r3, r7, lsr #8
+ 122:simpleserial-base.c ****             D = (D << 8) ^ tmp1;
+ 249              		.loc 1 122 0
+ 250 005c 42EA0626 		orrmi	r6, r2, r6, lsl #8
+ 251              	.LVL22:
+ 123:simpleserial-base.c ****         }
+ 252              		.loc 1 123 0
+ 253 0060 43EA0828 		orrmi	r8, r3, r8, lsl #8
+ 254              	.LVL23:
+ 103:simpleserial-base.c ****     {
+ 255              		.loc 1 103 0
+ 256 0064 102D     		cmp	r5, #16
+ 257 0066 04F10804 		add	r4, r4, #8
+ 258 006a D4D1     		bne	.L9
+ 127:simpleserial-base.c ****     
+ 259              		.loc 1 127 0
+ 260 006c 02B0     		add	sp, sp, #8
+ 261              	.LCFI2:
+ 262              		.cfi_def_cfa_offset 32
+ 263              		@ sp needed
+ 264 006e BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, r10, pc}
+ 265              	.LVL24:
+ 266              	.L13:
+ 267 0072 00BF     		.align	2
+ 268              	.L12:
+ 269 0074 00000000 		.word	.LANCHOR1
+ 270              		.cfi_endproc
+ 271              	.LFE1:
+ 273              		.section	.text.SEED_F,"ax",%progbits
+ 274              		.align	1
+ 275              		.global	SEED_F
+ 276              		.thumb
+ 277              		.thumb_func
+ 279              	SEED_F:
+ 280              	.LFB2:
+ 129:simpleserial-base.c ****     unsigned long temp[2]; // 16비트
+ 281              		.loc 1 129 0
+ 282              		.cfi_startproc
+ 283              		@ args = 0, pretend = 0, frame = 8
+ 284              		@ frame_needed = 0, uses_anonymous_args = 0
+ 285              	.LVL25:
+ 286 0000 13B5     		push	{r0, r1, r4, lr}
+ 287              	.LCFI3:
+ 288              		.cfi_def_cfa_offset 16
+ 289              		.cfi_offset 4, -8
+ 290              		.cfi_offset 14, -4
+ 131:simpleserial-base.c **** 	temp[1] = R[1] ^ k[1];
+ 291              		.loc 1 131 0
+ 292 0002 1368     		ldr	r3, [r2]
+ 134:simpleserial-base.c **** 
+ 293              		.loc 1 134 0
+ 294 0004 5268     		ldr	r2, [r2, #4]
+ 295              	.LVL26:
+ 129:simpleserial-base.c ****     unsigned long temp[2]; // 16비트
+ 296              		.loc 1 129 0
+ 297 0006 0446     		mov	r4, r0
+ 131:simpleserial-base.c **** 	temp[1] = R[1] ^ k[1];
+ 298              		.loc 1 131 0
+ 299 0008 0868     		ldr	r0, [r1]
+ 300              	.LVL27:
+ 134:simpleserial-base.c **** 
+ 301              		.loc 1 134 0
+ 302 000a 4968     		ldr	r1, [r1, #4]
+ 303              	.LVL28:
+ 131:simpleserial-base.c **** 	temp[1] = R[1] ^ k[1];
+ 304              		.loc 1 131 0
+ 305 000c 4340     		eors	r3, r3, r0
+ 134:simpleserial-base.c **** 
+ 306              		.loc 1 134 0
+ 307 000e 4A40     		eors	r2, r2, r1
+ 131:simpleserial-base.c **** 	temp[1] = R[1] ^ k[1];
+ 308              		.loc 1 131 0
+ 309 0010 0093     		str	r3, [sp]
+ 136:simpleserial-base.c **** 	temp[0] += temp[1];
+ 310              		.loc 1 136 0
+ 311 0012 01A8     		add	r0, sp, #4
+ 134:simpleserial-base.c **** 
+ 312              		.loc 1 134 0
+ 313 0014 5340     		eors	r3, r3, r2
+ 314 0016 0193     		str	r3, [sp, #4]
+ 136:simpleserial-base.c **** 	temp[0] += temp[1];
+ 315              		.loc 1 136 0
+ 316 0018 FFF7FEFF 		bl	SEED_G
+ 317              	.LVL29:
+ 137:simpleserial-base.c **** 
+ 318              		.loc 1 137 0
+ 319 001c 9DE80C00 		ldmia	sp, {r2, r3}
+ 139:simpleserial-base.c **** 	temp[1] += temp[0];
+ 320              		.loc 1 139 0
+ 321 0020 6846     		mov	r0, sp
+ 137:simpleserial-base.c **** 
+ 322              		.loc 1 137 0
+ 323 0022 1344     		add	r3, r3, r2
+ 324 0024 0093     		str	r3, [sp]
+ 139:simpleserial-base.c **** 	temp[1] += temp[0];
+ 325              		.loc 1 139 0
+ 326 0026 FFF7FEFF 		bl	SEED_G
+ 327              	.LVL30:
+ 140:simpleserial-base.c **** 
+ 328              		.loc 1 140 0
+ 329 002a 9DE80C00 		ldmia	sp, {r2, r3}
+ 142:simpleserial-base.c **** 	temp[0] += temp[1];
+ 330              		.loc 1 142 0
+ 331 002e 01A8     		add	r0, sp, #4
+ 140:simpleserial-base.c **** 
+ 332              		.loc 1 140 0
+ 333 0030 1344     		add	r3, r3, r2
+ 334 0032 0193     		str	r3, [sp, #4]
+ 142:simpleserial-base.c **** 	temp[0] += temp[1];
+ 335              		.loc 1 142 0
+ 336 0034 FFF7FEFF 		bl	SEED_G
+ 337              	.LVL31:
+ 143:simpleserial-base.c **** 
+ 338              		.loc 1 143 0
+ 339 0038 019A     		ldr	r2, [sp, #4]
+ 146:simpleserial-base.c **** 	L[1] ^= temp[1];
+ 340              		.loc 1 146 0
+ 341 003a 009B     		ldr	r3, [sp]
+ 342 003c 2168     		ldr	r1, [r4]
+ 343 003e 1344     		add	r3, r3, r2
+ 344 0040 4B40     		eors	r3, r3, r1
+ 345 0042 2360     		str	r3, [r4]
+ 147:simpleserial-base.c ****         
+ 346              		.loc 1 147 0
+ 347 0044 6368     		ldr	r3, [r4, #4]
+ 348 0046 5A40     		eors	r2, r2, r3
+ 349 0048 6260     		str	r2, [r4, #4]
+ 149:simpleserial-base.c ****     
+ 350              		.loc 1 149 0
+ 351 004a 02B0     		add	sp, sp, #8
+ 352              	.LCFI4:
+ 353              		.cfi_def_cfa_offset 8
+ 354              		@ sp needed
+ 355 004c 10BD     		pop	{r4, pc}
+ 356              		.cfi_endproc
+ 357              	.LFE2:
+ 359              		.section	.text.get_pt,"ax",%progbits
+ 360              		.align	1
+ 361              		.global	get_pt
+ 362              		.thumb
+ 363              		.thumb_func
+ 365              	get_pt:
+ 366              	.LFB4:
+ 162:simpleserial-base.c **** 	
+ 367              		.loc 1 162 0
+ 368              		.cfi_startproc
+ 369              		@ args = 0, pretend = 0, frame = 144
+ 370              		@ frame_needed = 0, uses_anonymous_args = 0
+ 371              	.LVL32:
+ 372 0000 30B5     		push	{r4, r5, lr}
+ 373              	.LCFI5:
+ 374              		.cfi_def_cfa_offset 12
+ 375              		.cfi_offset 4, -12
+ 376              		.cfi_offset 5, -8
+ 377              		.cfi_offset 14, -4
+ 171:simpleserial-base.c ****     L[1] = (pt[4] << 24) ^ (pt[5] << 16)  ^ (pt[6] << 8)  ^ pt[7];
+ 378              		.loc 1 171 0
+ 379 0002 4378     		ldrb	r3, [r0, #1]	@ zero_extendqisi2
+ 380 0004 0278     		ldrb	r2, [r0]	@ zero_extendqisi2
+ 381 0006 1B04     		lsls	r3, r3, #16
+ 382 0008 43EA0263 		orr	r3, r3, r2, lsl #24
+ 383 000c C278     		ldrb	r2, [r0, #3]	@ zero_extendqisi2
+ 384 000e 5340     		eors	r3, r3, r2
+ 385 0010 8278     		ldrb	r2, [r0, #2]	@ zero_extendqisi2
+ 162:simpleserial-base.c **** 	
+ 386              		.loc 1 162 0
+ 387 0012 A7B0     		sub	sp, sp, #156
+ 388              	.LCFI6:
+ 389              		.cfi_def_cfa_offset 168
+ 171:simpleserial-base.c ****     L[1] = (pt[4] << 24) ^ (pt[5] << 16)  ^ (pt[6] << 8)  ^ pt[7];
+ 390              		.loc 1 171 0
+ 391 0014 43EA0223 		orr	r3, r3, r2, lsl #8
+ 392 0018 0293     		str	r3, [sp, #8]
+ 172:simpleserial-base.c ****     R[0] = (pt[8] << 24) ^ (pt[9] << 16)  ^ (pt[10] << 8)  ^ pt[11];
+ 393              		.loc 1 172 0
+ 394 001a 4379     		ldrb	r3, [r0, #5]	@ zero_extendqisi2
+ 395 001c 0279     		ldrb	r2, [r0, #4]	@ zero_extendqisi2
+ 396 001e 1B04     		lsls	r3, r3, #16
+ 397 0020 43EA0263 		orr	r3, r3, r2, lsl #24
+ 398 0024 C279     		ldrb	r2, [r0, #7]	@ zero_extendqisi2
+ 399 0026 5340     		eors	r3, r3, r2
+ 400 0028 8279     		ldrb	r2, [r0, #6]	@ zero_extendqisi2
+ 401 002a 43EA0223 		orr	r3, r3, r2, lsl #8
+ 402 002e 0393     		str	r3, [sp, #12]
+ 173:simpleserial-base.c ****     R[1] = (pt[12] << 24) ^ (pt[13] << 16)  ^ (pt[14] << 8)  ^ pt[15];
+ 403              		.loc 1 173 0
+ 404 0030 437A     		ldrb	r3, [r0, #9]	@ zero_extendqisi2
+ 405 0032 027A     		ldrb	r2, [r0, #8]	@ zero_extendqisi2
+ 406 0034 1B04     		lsls	r3, r3, #16
+ 407 0036 43EA0263 		orr	r3, r3, r2, lsl #24
+ 408 003a C27A     		ldrb	r2, [r0, #11]	@ zero_extendqisi2
+ 409 003c 5340     		eors	r3, r3, r2
+ 410 003e 827A     		ldrb	r2, [r0, #10]	@ zero_extendqisi2
+ 411 0040 43EA0223 		orr	r3, r3, r2, lsl #8
+ 412 0044 0493     		str	r3, [sp, #16]
+ 174:simpleserial-base.c ****     
+ 413              		.loc 1 174 0
+ 414 0046 437B     		ldrb	r3, [r0, #13]	@ zero_extendqisi2
+ 415 0048 027B     		ldrb	r2, [r0, #12]	@ zero_extendqisi2
+ 416 004a 1B04     		lsls	r3, r3, #16
+ 417 004c 43EA0263 		orr	r3, r3, r2, lsl #24
+ 418 0050 C27B     		ldrb	r2, [r0, #15]	@ zero_extendqisi2
+ 419 0052 5340     		eors	r3, r3, r2
+ 420 0054 827B     		ldrb	r2, [r0, #14]	@ zero_extendqisi2
+ 421 0056 43EA0223 		orr	r3, r3, r2, lsl #8
+ 422 005a 0593     		str	r3, [sp, #20]
+ 176:simpleserial-base.c **** 	trigger_high();
+ 423              		.loc 1 176 0
+ 424 005c 06AD     		add	r5, sp, #24
+ 425 005e 0023     		movs	r3, #0
+ 426 0060 1A46     		mov	r2, r3
+ 427 0062 1946     		mov	r1, r3
+ 162:simpleserial-base.c **** 	
+ 428              		.loc 1 162 0
+ 429 0064 0446     		mov	r4, r0
+ 176:simpleserial-base.c **** 	trigger_high();
+ 430              		.loc 1 176 0
+ 431 0066 0095     		str	r5, [sp]
+ 432 0068 1846     		mov	r0, r3
+ 433              	.LVL33:
+ 434 006a FFF7FEFF 		bl	KeyGen
+ 435              	.LVL34:
+ 177:simpleserial-base.c **** 	
+ 436              		.loc 1 177 0
+ 437 006e FFF7FEFF 		bl	trigger_high
+ 438              	.LVL35:
+ 185:simpleserial-base.c ****     SEED_F(R, L, RK[1]);
+ 439              		.loc 1 185 0
+ 440 0072 2A46     		mov	r2, r5
+ 441 0074 04A9     		add	r1, sp, #16
+ 442 0076 02A8     		add	r0, sp, #8
+ 443 0078 FFF7FEFF 		bl	SEED_F
+ 444              	.LVL36:
+ 186:simpleserial-base.c ****     SEED_F(L, R, RK[2]);
+ 445              		.loc 1 186 0
+ 446 007c 08AA     		add	r2, sp, #32
+ 447 007e 02A9     		add	r1, sp, #8
+ 448 0080 04A8     		add	r0, sp, #16
+ 449 0082 FFF7FEFF 		bl	SEED_F
+ 450              	.LVL37:
+ 187:simpleserial-base.c ****     SEED_F(R, L, RK[3]);
+ 451              		.loc 1 187 0
+ 452 0086 0AAA     		add	r2, sp, #40
+ 453 0088 04A9     		add	r1, sp, #16
+ 454 008a 02A8     		add	r0, sp, #8
+ 455 008c FFF7FEFF 		bl	SEED_F
+ 456              	.LVL38:
+ 188:simpleserial-base.c ****     SEED_F(L, R, RK[4]);
+ 457              		.loc 1 188 0
+ 458 0090 0CAA     		add	r2, sp, #48
+ 459 0092 02A9     		add	r1, sp, #8
+ 460 0094 04A8     		add	r0, sp, #16
+ 461 0096 FFF7FEFF 		bl	SEED_F
+ 462              	.LVL39:
+ 189:simpleserial-base.c ****     SEED_F(R, L, RK[5]);
+ 463              		.loc 1 189 0
+ 464 009a 0EAA     		add	r2, sp, #56
+ 465 009c 04A9     		add	r1, sp, #16
+ 466 009e 02A8     		add	r0, sp, #8
+ 467 00a0 FFF7FEFF 		bl	SEED_F
+ 468              	.LVL40:
+ 190:simpleserial-base.c ****     SEED_F(L, R, RK[6]);
+ 469              		.loc 1 190 0
+ 470 00a4 10AA     		add	r2, sp, #64
+ 471 00a6 02A9     		add	r1, sp, #8
+ 472 00a8 04A8     		add	r0, sp, #16
+ 473 00aa FFF7FEFF 		bl	SEED_F
+ 474              	.LVL41:
+ 191:simpleserial-base.c ****     SEED_F(R, L, RK[7]);
+ 475              		.loc 1 191 0
+ 476 00ae 12AA     		add	r2, sp, #72
+ 477 00b0 04A9     		add	r1, sp, #16
+ 478 00b2 02A8     		add	r0, sp, #8
+ 479 00b4 FFF7FEFF 		bl	SEED_F
+ 480              	.LVL42:
+ 192:simpleserial-base.c ****     SEED_F(L, R, RK[8]);
+ 481              		.loc 1 192 0
+ 482 00b8 14AA     		add	r2, sp, #80
+ 483 00ba 02A9     		add	r1, sp, #8
+ 484 00bc 04A8     		add	r0, sp, #16
+ 485 00be FFF7FEFF 		bl	SEED_F
+ 486              	.LVL43:
+ 193:simpleserial-base.c ****     SEED_F(R, L, RK[9]);
+ 487              		.loc 1 193 0
+ 488 00c2 16AA     		add	r2, sp, #88
+ 489 00c4 04A9     		add	r1, sp, #16
+ 490 00c6 02A8     		add	r0, sp, #8
+ 491 00c8 FFF7FEFF 		bl	SEED_F
+ 492              	.LVL44:
+ 194:simpleserial-base.c ****     SEED_F(L, R, RK[10]);
+ 493              		.loc 1 194 0
+ 494 00cc 18AA     		add	r2, sp, #96
+ 495 00ce 02A9     		add	r1, sp, #8
+ 496 00d0 04A8     		add	r0, sp, #16
+ 497 00d2 FFF7FEFF 		bl	SEED_F
+ 498              	.LVL45:
+ 195:simpleserial-base.c ****     SEED_F(R, L, RK[11]);
+ 499              		.loc 1 195 0
+ 500 00d6 1AAA     		add	r2, sp, #104
+ 501 00d8 04A9     		add	r1, sp, #16
+ 502 00da 02A8     		add	r0, sp, #8
+ 503 00dc FFF7FEFF 		bl	SEED_F
+ 504              	.LVL46:
+ 196:simpleserial-base.c ****     SEED_F(L, R, RK[12]);
+ 505              		.loc 1 196 0
+ 506 00e0 1CAA     		add	r2, sp, #112
+ 507 00e2 02A9     		add	r1, sp, #8
+ 508 00e4 04A8     		add	r0, sp, #16
+ 509 00e6 FFF7FEFF 		bl	SEED_F
+ 510              	.LVL47:
+ 197:simpleserial-base.c ****     SEED_F(R, L, RK[13]);
+ 511              		.loc 1 197 0
+ 512 00ea 1EAA     		add	r2, sp, #120
+ 513 00ec 04A9     		add	r1, sp, #16
+ 514 00ee 02A8     		add	r0, sp, #8
+ 515 00f0 FFF7FEFF 		bl	SEED_F
+ 516              	.LVL48:
+ 198:simpleserial-base.c ****     SEED_F(L, R, RK[14]);
+ 517              		.loc 1 198 0
+ 518 00f4 20AA     		add	r2, sp, #128
+ 519 00f6 02A9     		add	r1, sp, #8
+ 520 00f8 04A8     		add	r0, sp, #16
+ 521 00fa FFF7FEFF 		bl	SEED_F
+ 522              	.LVL49:
+ 199:simpleserial-base.c ****     SEED_F(R, L, RK[15]);
+ 523              		.loc 1 199 0
+ 524 00fe 22AA     		add	r2, sp, #136
+ 525 0100 04A9     		add	r1, sp, #16
+ 526 0102 02A8     		add	r0, sp, #8
+ 527 0104 FFF7FEFF 		bl	SEED_F
+ 528              	.LVL50:
+ 200:simpleserial-base.c ****     
+ 529              		.loc 1 200 0
+ 530 0108 24AA     		add	r2, sp, #144
+ 531 010a 02A9     		add	r1, sp, #8
+ 532 010c 04A8     		add	r0, sp, #16
+ 533 010e FFF7FEFF 		bl	SEED_F
+ 534              	.LVL51:
+ 205:simpleserial-base.c ****     
+ 535              		.loc 1 205 0
+ 536 0112 FFF7FEFF 		bl	trigger_low
+ 537              	.LVL52:
+ 207:simpleserial-base.c ****     pt[1] = R[0] >>16 &0xff;
+ 538              		.loc 1 207 0
+ 539 0116 049B     		ldr	r3, [sp, #16]
+ 210:simpleserial-base.c ****     pt[4] = R[1] >>24 &0xff;
+ 540              		.loc 1 210 0
+ 541 0118 E370     		strb	r3, [r4, #3]
+ 207:simpleserial-base.c ****     pt[1] = R[0] >>16 &0xff;
+ 542              		.loc 1 207 0
+ 543 011a 1A0E     		lsrs	r2, r3, #24
+ 544 011c 2270     		strb	r2, [r4]
+ 208:simpleserial-base.c ****     pt[2] = R[0] >>8 &0xff;
+ 545              		.loc 1 208 0
+ 546 011e 1A0C     		lsrs	r2, r3, #16
+ 547 0120 6270     		strb	r2, [r4, #1]
+ 209:simpleserial-base.c ****     pt[3] = R[0]  &0xff;
+ 548              		.loc 1 209 0
+ 549 0122 1A0A     		lsrs	r2, r3, #8
+ 211:simpleserial-base.c ****     pt[5] = R[1] >>16 &0xff;
+ 550              		.loc 1 211 0
+ 551 0124 059B     		ldr	r3, [sp, #20]
+ 209:simpleserial-base.c ****     pt[3] = R[0]  &0xff;
+ 552              		.loc 1 209 0
+ 553 0126 A270     		strb	r2, [r4, #2]
+ 211:simpleserial-base.c ****     pt[5] = R[1] >>16 &0xff;
+ 554              		.loc 1 211 0
+ 555 0128 1A0E     		lsrs	r2, r3, #24
+ 556 012a 2271     		strb	r2, [r4, #4]
+ 212:simpleserial-base.c ****     pt[6] = R[1] >>8 &0xff;
+ 557              		.loc 1 212 0
+ 558 012c 1A0C     		lsrs	r2, r3, #16
+ 559 012e 6271     		strb	r2, [r4, #5]
+ 214:simpleserial-base.c ****     pt[8] = L[0] >>24 &0xff;
+ 560              		.loc 1 214 0
+ 561 0130 E371     		strb	r3, [r4, #7]
+ 213:simpleserial-base.c ****     pt[7] = R[1]  &0xff;
+ 562              		.loc 1 213 0
+ 563 0132 1A0A     		lsrs	r2, r3, #8
+ 215:simpleserial-base.c ****     pt[9] = L[0] >>16 &0xff;
+ 564              		.loc 1 215 0
+ 565 0134 029B     		ldr	r3, [sp, #8]
+ 213:simpleserial-base.c ****     pt[7] = R[1]  &0xff;
+ 566              		.loc 1 213 0
+ 567 0136 A271     		strb	r2, [r4, #6]
+ 215:simpleserial-base.c ****     pt[9] = L[0] >>16 &0xff;
+ 568              		.loc 1 215 0
+ 569 0138 1A0E     		lsrs	r2, r3, #24
+ 570 013a 2272     		strb	r2, [r4, #8]
+ 216:simpleserial-base.c ****     pt[10] = L[0] >>8 &0xff;
+ 571              		.loc 1 216 0
+ 572 013c 1A0C     		lsrs	r2, r3, #16
+ 573 013e 6272     		strb	r2, [r4, #9]
+ 218:simpleserial-base.c ****     pt[12] = L[1] >>24 &0xff;
+ 574              		.loc 1 218 0
+ 575 0140 E372     		strb	r3, [r4, #11]
+ 217:simpleserial-base.c ****     pt[11] = L[0]  &0xff;
+ 576              		.loc 1 217 0
+ 577 0142 1A0A     		lsrs	r2, r3, #8
+ 219:simpleserial-base.c ****     pt[13] = L[1] >>16 &0xff;
+ 578              		.loc 1 219 0
+ 579 0144 039B     		ldr	r3, [sp, #12]
+ 217:simpleserial-base.c ****     pt[11] = L[0]  &0xff;
+ 580              		.loc 1 217 0
+ 581 0146 A272     		strb	r2, [r4, #10]
+ 219:simpleserial-base.c ****     pt[13] = L[1] >>16 &0xff;
+ 582              		.loc 1 219 0
+ 583 0148 1A0E     		lsrs	r2, r3, #24
+ 584 014a 2273     		strb	r2, [r4, #12]
+ 220:simpleserial-base.c ****     pt[14] = L[1] >>8 &0xff;
+ 585              		.loc 1 220 0
+ 586 014c 1A0C     		lsrs	r2, r3, #16
+ 587 014e 6273     		strb	r2, [r4, #13]
+ 221:simpleserial-base.c ****     pt[15] = L[1] &0xff;
+ 588              		.loc 1 221 0
+ 589 0150 1A0A     		lsrs	r2, r3, #8
+ 590 0152 A273     		strb	r2, [r4, #14]
+ 222:simpleserial-base.c ****     
+ 591              		.loc 1 222 0
+ 592 0154 E373     		strb	r3, [r4, #15]
+ 227:simpleserial-base.c **** 	return 0x00;
+ 593              		.loc 1 227 0
+ 594 0156 2246     		mov	r2, r4
+ 595 0158 1021     		movs	r1, #16
+ 596 015a 7220     		movs	r0, #114
+ 597 015c FFF7FEFF 		bl	simpleserial_put
+ 598              	.LVL53:
+ 229:simpleserial-base.c **** 
+ 599              		.loc 1 229 0
+ 600 0160 0020     		movs	r0, #0
+ 601 0162 27B0     		add	sp, sp, #156
+ 602              	.LCFI7:
+ 603              		.cfi_def_cfa_offset 12
+ 604              		@ sp needed
+ 605 0164 30BD     		pop	{r4, r5, pc}
+ 606              		.cfi_endproc
+ 607              	.LFE4:
+ 609              		.section	.text.startup.main,"ax",%progbits
+ 610              		.align	1
+ 611              		.global	main
+ 612              		.thumb
+ 613              		.thumb_func
+ 615              	main:
+ 616              	.LFB6:
+ 236:simpleserial-base.c **** int main(void){
+ 617              		.loc 1 236 0
+ 618              		.cfi_startproc
+ 619              		@ Volatile: function does not return.
+ 620              		@ args = 0, pretend = 0, frame = 0
+ 621              		@ frame_needed = 0, uses_anonymous_args = 0
+ 622 0000 08B5     		push	{r3, lr}
+ 623              	.LCFI8:
+ 624              		.cfi_def_cfa_offset 8
+ 625              		.cfi_offset 3, -8
+ 626              		.cfi_offset 14, -4
+ 237:simpleserial-base.c **** 
+ 238:simpleserial-base.c ****     platform_init();
+ 627              		.loc 1 238 0
+ 628 0002 FFF7FEFF 		bl	platform_init
+ 629              	.LVL54:
+ 239:simpleserial-base.c **** 	init_uart();	
+ 630              		.loc 1 239 0
+ 631 0006 FFF7FEFF 		bl	init_uart
+ 632              	.LVL55:
+ 240:simpleserial-base.c **** 	trigger_setup();
+ 633              		.loc 1 240 0
+ 634 000a FFF7FEFF 		bl	trigger_setup
+ 635              	.LVL56:
+ 241:simpleserial-base.c **** 	
+ 242:simpleserial-base.c ****  	/* Uncomment this to get a HELLO message for debug */
+ 243:simpleserial-base.c **** 	/*
+ 244:simpleserial-base.c **** 	putch('h');
+ 245:simpleserial-base.c **** 	putch('e');
+ 246:simpleserial-base.c **** 	putch('l');
+ 247:simpleserial-base.c **** 	putch('l');
+ 248:simpleserial-base.c **** 	putch('o');
+ 249:simpleserial-base.c **** 	putch('\n');
+ 250:simpleserial-base.c **** 	*/
+ 251:simpleserial-base.c **** 		
+ 252:simpleserial-base.c **** 	simpleserial_init();		
+ 636              		.loc 1 252 0
+ 637 000e FFF7FEFF 		bl	simpleserial_init
+ 638              	.LVL57:
+ 253:simpleserial-base.c **** 	simpleserial_addcmd('p', 16, get_pt);
+ 639              		.loc 1 253 0
+ 640 0012 094A     		ldr	r2, .L18
+ 641 0014 1021     		movs	r1, #16
+ 642 0016 7020     		movs	r0, #112
+ 643 0018 FFF7FEFF 		bl	simpleserial_addcmd
+ 644              	.LVL58:
+ 254:simpleserial-base.c **** #if SS_VER != SS_VER_2_0
+ 255:simpleserial-base.c **** 	simpleserial_addcmd('k', 16, get_key);
+ 645              		.loc 1 255 0
+ 646 001c 074A     		ldr	r2, .L18+4
+ 647 001e 1021     		movs	r1, #16
+ 648 0020 6B20     		movs	r0, #107
+ 649 0022 FFF7FEFF 		bl	simpleserial_addcmd
+ 650              	.LVL59:
+ 256:simpleserial-base.c **** 	simpleserial_addcmd('x', 0, reset);
+ 651              		.loc 1 256 0
+ 652 0026 064A     		ldr	r2, .L18+8
+ 653 0028 0021     		movs	r1, #0
+ 654 002a 7820     		movs	r0, #120
+ 655 002c FFF7FEFF 		bl	simpleserial_addcmd
+ 656              	.LVL60:
+ 657              	.L17:
+ 257:simpleserial-base.c **** #endif
+ 258:simpleserial-base.c **** 	while(1)
+ 259:simpleserial-base.c **** 		simpleserial_get();
+ 658              		.loc 1 259 0 discriminator 1
+ 659 0030 FFF7FEFF 		bl	simpleserial_get
+ 660              	.LVL61:
+ 661 0034 FCE7     		b	.L17
+ 662              	.L19:
+ 663 0036 00BF     		.align	2
+ 664              	.L18:
+ 665 0038 00000000 		.word	get_pt
+ 666 003c 00000000 		.word	get_key
+ 667 0040 00000000 		.word	reset
+ 668              		.cfi_endproc
+ 669              	.LFE6:
+ 671              		.global	SEED_KC
+ 672              		.global	SEED_S2box
+ 673              		.global	SEED_S1box
+ 674              		.section	.rodata
+ 675              		.align	2
+ 676              		.set	.LANCHOR1,. + 0
+ 679              	SEED_KC:
+ 680 0000 B979379E 		.word	-1640531527
+ 681 0004 73F36E3C 		.word	1013904243
+ 682 0008 E6E6DD78 		.word	2027808486
+ 683 000c CCCDBBF1 		.word	-239350324
+ 684 0010 999B77E3 		.word	-478700647
+ 685 0014 3337EFC6 		.word	-957401293
+ 686 0018 676EDE8D 		.word	-1914802585
+ 687 001c CFDCBC1B 		.word	465362127
+ 688 0020 9EB97937 		.word	930724254
+ 689 0024 3C73F36E 		.word	1861448508
+ 690 0028 78E6E6DD 		.word	-572070280
+ 691 002c F1CCCDBB 		.word	-1144140559
+ 692 0030 E3999B77 		.word	2006686179
+ 693 0034 C63337EF 		.word	-281594938
+ 694 0038 8D676EDE 		.word	-563189875
+ 695 003c 1BCFDCBC 		.word	-1126379749
+ 696              		.data
+ 697              		.set	.LANCHOR0,. + 0
+ 700              	SEED_S1box:
+ 701 0000 A9       		.byte	-87
+ 702 0001 85       		.byte	-123
+ 703 0002 D6       		.byte	-42
+ 704 0003 D3       		.byte	-45
+ 705 0004 54       		.byte	84
+ 706 0005 1D       		.byte	29
+ 707 0006 AC       		.byte	-84
+ 708 0007 25       		.byte	37
+ 709 0008 5D       		.byte	93
+ 710 0009 43       		.byte	67
+ 711 000a 18       		.byte	24
+ 712 000b 1E       		.byte	30
+ 713 000c 51       		.byte	81
+ 714 000d FC       		.byte	-4
+ 715 000e CA       		.byte	-54
+ 716 000f 63       		.byte	99
+ 717 0010 28       		.byte	40
+ 718 0011 44       		.byte	68
+ 719 0012 20       		.byte	32
+ 720 0013 9D       		.byte	-99
+ 721 0014 E0       		.byte	-32
+ 722 0015 E2       		.byte	-30
+ 723 0016 C8       		.byte	-56
+ 724 0017 17       		.byte	23
+ 725 0018 A5       		.byte	-91
+ 726 0019 8F       		.byte	-113
+ 727 001a 03       		.byte	3
+ 728 001b 7B       		.byte	123
+ 729 001c BB       		.byte	-69
+ 730 001d 13       		.byte	19
+ 731 001e D2       		.byte	-46
+ 732 001f EE       		.byte	-18
+ 733 0020 70       		.byte	112
+ 734 0021 8C       		.byte	-116
+ 735 0022 3F       		.byte	63
+ 736 0023 A8       		.byte	-88
+ 737 0024 32       		.byte	50
+ 738 0025 DD       		.byte	-35
+ 739 0026 F6       		.byte	-10
+ 740 0027 74       		.byte	116
+ 741 0028 EC       		.byte	-20
+ 742 0029 95       		.byte	-107
+ 743 002a 0B       		.byte	11
+ 744 002b 57       		.byte	87
+ 745 002c 5C       		.byte	92
+ 746 002d 5B       		.byte	91
+ 747 002e BD       		.byte	-67
+ 748 002f 01       		.byte	1
+ 749 0030 24       		.byte	36
+ 750 0031 1C       		.byte	28
+ 751 0032 73       		.byte	115
+ 752 0033 98       		.byte	-104
+ 753 0034 10       		.byte	16
+ 754 0035 CC       		.byte	-52
+ 755 0036 F2       		.byte	-14
+ 756 0037 D9       		.byte	-39
+ 757 0038 2C       		.byte	44
+ 758 0039 E7       		.byte	-25
+ 759 003a 72       		.byte	114
+ 760 003b 83       		.byte	-125
+ 761 003c 9B       		.byte	-101
+ 762 003d D1       		.byte	-47
+ 763 003e 86       		.byte	-122
+ 764 003f C9       		.byte	-55
+ 765 0040 60       		.byte	96
+ 766 0041 50       		.byte	80
+ 767 0042 A3       		.byte	-93
+ 768 0043 EB       		.byte	-21
+ 769 0044 0D       		.byte	13
+ 770 0045 B6       		.byte	-74
+ 771 0046 9E       		.byte	-98
+ 772 0047 4F       		.byte	79
+ 773 0048 B7       		.byte	-73
+ 774 0049 5A       		.byte	90
+ 775 004a C6       		.byte	-58
+ 776 004b 78       		.byte	120
+ 777 004c A6       		.byte	-90
+ 778 004d 12       		.byte	18
+ 779 004e AF       		.byte	-81
+ 780 004f D5       		.byte	-43
+ 781 0050 61       		.byte	97
+ 782 0051 C3       		.byte	-61
+ 783 0052 B4       		.byte	-76
+ 784 0053 41       		.byte	65
+ 785 0054 52       		.byte	82
+ 786 0055 7D       		.byte	125
+ 787 0056 8D       		.byte	-115
+ 788 0057 08       		.byte	8
+ 789 0058 1F       		.byte	31
+ 790 0059 99       		.byte	-103
+ 791 005a 00       		.byte	0
+ 792 005b 19       		.byte	25
+ 793 005c 04       		.byte	4
+ 794 005d 53       		.byte	83
+ 795 005e F7       		.byte	-9
+ 796 005f E1       		.byte	-31
+ 797 0060 FD       		.byte	-3
+ 798 0061 76       		.byte	118
+ 799 0062 2F       		.byte	47
+ 800 0063 27       		.byte	39
+ 801 0064 B0       		.byte	-80
+ 802 0065 8B       		.byte	-117
+ 803 0066 0E       		.byte	14
+ 804 0067 AB       		.byte	-85
+ 805 0068 A2       		.byte	-94
+ 806 0069 6E       		.byte	110
+ 807 006a 93       		.byte	-109
+ 808 006b 4D       		.byte	77
+ 809 006c 69       		.byte	105
+ 810 006d 7C       		.byte	124
+ 811 006e 09       		.byte	9
+ 812 006f 0A       		.byte	10
+ 813 0070 BF       		.byte	-65
+ 814 0071 EF       		.byte	-17
+ 815 0072 F3       		.byte	-13
+ 816 0073 C5       		.byte	-59
+ 817 0074 87       		.byte	-121
+ 818 0075 14       		.byte	20
+ 819 0076 FE       		.byte	-2
+ 820 0077 64       		.byte	100
+ 821 0078 DE       		.byte	-34
+ 822 0079 2E       		.byte	46
+ 823 007a 4B       		.byte	75
+ 824 007b 1A       		.byte	26
+ 825 007c 06       		.byte	6
+ 826 007d 21       		.byte	33
+ 827 007e 6B       		.byte	107
+ 828 007f 66       		.byte	102
+ 829 0080 02       		.byte	2
+ 830 0081 F5       		.byte	-11
+ 831 0082 92       		.byte	-110
+ 832 0083 8A       		.byte	-118
+ 833 0084 0C       		.byte	12
+ 834 0085 B3       		.byte	-77
+ 835 0086 7E       		.byte	126
+ 836 0087 D0       		.byte	-48
+ 837 0088 7A       		.byte	122
+ 838 0089 47       		.byte	71
+ 839 008a 96       		.byte	-106
+ 840 008b E5       		.byte	-27
+ 841 008c 26       		.byte	38
+ 842 008d 80       		.byte	-128
+ 843 008e AD       		.byte	-83
+ 844 008f DF       		.byte	-33
+ 845 0090 A1       		.byte	-95
+ 846 0091 30       		.byte	48
+ 847 0092 37       		.byte	55
+ 848 0093 AE       		.byte	-82
+ 849 0094 36       		.byte	54
+ 850 0095 15       		.byte	21
+ 851 0096 22       		.byte	34
+ 852 0097 38       		.byte	56
+ 853 0098 F4       		.byte	-12
+ 854 0099 A7       		.byte	-89
+ 855 009a 45       		.byte	69
+ 856 009b 4C       		.byte	76
+ 857 009c 81       		.byte	-127
+ 858 009d E9       		.byte	-23
+ 859 009e 84       		.byte	-124
+ 860 009f 97       		.byte	-105
+ 861 00a0 35       		.byte	53
+ 862 00a1 CB       		.byte	-53
+ 863 00a2 CE       		.byte	-50
+ 864 00a3 3C       		.byte	60
+ 865 00a4 71       		.byte	113
+ 866 00a5 11       		.byte	17
+ 867 00a6 C7       		.byte	-57
+ 868 00a7 89       		.byte	-119
+ 869 00a8 75       		.byte	117
+ 870 00a9 FB       		.byte	-5
+ 871 00aa DA       		.byte	-38
+ 872 00ab F8       		.byte	-8
+ 873 00ac 94       		.byte	-108
+ 874 00ad 59       		.byte	89
+ 875 00ae 82       		.byte	-126
+ 876 00af C4       		.byte	-60
+ 877 00b0 FF       		.byte	-1
+ 878 00b1 49       		.byte	73
+ 879 00b2 39       		.byte	57
+ 880 00b3 67       		.byte	103
+ 881 00b4 C0       		.byte	-64
+ 882 00b5 CF       		.byte	-49
+ 883 00b6 D7       		.byte	-41
+ 884 00b7 B8       		.byte	-72
+ 885 00b8 0F       		.byte	15
+ 886 00b9 8E       		.byte	-114
+ 887 00ba 42       		.byte	66
+ 888 00bb 23       		.byte	35
+ 889 00bc 91       		.byte	-111
+ 890 00bd 6C       		.byte	108
+ 891 00be DB       		.byte	-37
+ 892 00bf A4       		.byte	-92
+ 893 00c0 34       		.byte	52
+ 894 00c1 F1       		.byte	-15
+ 895 00c2 48       		.byte	72
+ 896 00c3 C2       		.byte	-62
+ 897 00c4 6F       		.byte	111
+ 898 00c5 3D       		.byte	61
+ 899 00c6 2D       		.byte	45
+ 900 00c7 40       		.byte	64
+ 901 00c8 BE       		.byte	-66
+ 902 00c9 3E       		.byte	62
+ 903 00ca BC       		.byte	-68
+ 904 00cb C1       		.byte	-63
+ 905 00cc AA       		.byte	-86
+ 906 00cd BA       		.byte	-70
+ 907 00ce 4E       		.byte	78
+ 908 00cf 55       		.byte	85
+ 909 00d0 3B       		.byte	59
+ 910 00d1 DC       		.byte	-36
+ 911 00d2 68       		.byte	104
+ 912 00d3 7F       		.byte	127
+ 913 00d4 9C       		.byte	-100
+ 914 00d5 D8       		.byte	-40
+ 915 00d6 4A       		.byte	74
+ 916 00d7 56       		.byte	86
+ 917 00d8 77       		.byte	119
+ 918 00d9 A0       		.byte	-96
+ 919 00da ED       		.byte	-19
+ 920 00db 46       		.byte	70
+ 921 00dc B5       		.byte	-75
+ 922 00dd 2B       		.byte	43
+ 923 00de 65       		.byte	101
+ 924 00df FA       		.byte	-6
+ 925 00e0 E3       		.byte	-29
+ 926 00e1 B9       		.byte	-71
+ 927 00e2 B1       		.byte	-79
+ 928 00e3 9F       		.byte	-97
+ 929 00e4 5E       		.byte	94
+ 930 00e5 F9       		.byte	-7
+ 931 00e6 E6       		.byte	-26
+ 932 00e7 B2       		.byte	-78
+ 933 00e8 31       		.byte	49
+ 934 00e9 EA       		.byte	-22
+ 935 00ea 6D       		.byte	109
+ 936 00eb 5F       		.byte	95
+ 937 00ec E4       		.byte	-28
+ 938 00ed F0       		.byte	-16
+ 939 00ee CD       		.byte	-51
+ 940 00ef 88       		.byte	-120
+ 941 00f0 16       		.byte	22
+ 942 00f1 3A       		.byte	58
+ 943 00f2 58       		.byte	88
+ 944 00f3 D4       		.byte	-44
+ 945 00f4 62       		.byte	98
+ 946 00f5 29       		.byte	41
+ 947 00f6 07       		.byte	7
+ 948 00f7 33       		.byte	51
+ 949 00f8 E8       		.byte	-24
+ 950 00f9 1B       		.byte	27
+ 951 00fa 05       		.byte	5
+ 952 00fb 79       		.byte	121
+ 953 00fc 90       		.byte	-112
+ 954 00fd 6A       		.byte	106
+ 955 00fe 2A       		.byte	42
+ 956 00ff 9A       		.byte	-102
+ 959              	SEED_S2box:
+ 960 0100 38       		.byte	56
+ 961 0101 E8       		.byte	-24
+ 962 0102 2D       		.byte	45
+ 963 0103 A6       		.byte	-90
+ 964 0104 CF       		.byte	-49
+ 965 0105 DE       		.byte	-34
+ 966 0106 B3       		.byte	-77
+ 967 0107 B8       		.byte	-72
+ 968 0108 AF       		.byte	-81
+ 969 0109 60       		.byte	96
+ 970 010a 55       		.byte	85
+ 971 010b C7       		.byte	-57
+ 972 010c 44       		.byte	68
+ 973 010d 6F       		.byte	111
+ 974 010e 6B       		.byte	107
+ 975 010f 5B       		.byte	91
+ 976 0110 C3       		.byte	-61
+ 977 0111 62       		.byte	98
+ 978 0112 33       		.byte	51
+ 979 0113 B5       		.byte	-75
+ 980 0114 29       		.byte	41
+ 981 0115 A0       		.byte	-96
+ 982 0116 E2       		.byte	-30
+ 983 0117 A7       		.byte	-89
+ 984 0118 D3       		.byte	-45
+ 985 0119 91       		.byte	-111
+ 986 011a 11       		.byte	17
+ 987 011b 06       		.byte	6
+ 988 011c 1C       		.byte	28
+ 989 011d BC       		.byte	-68
+ 990 011e 36       		.byte	54
+ 991 011f 4B       		.byte	75
+ 992 0120 EF       		.byte	-17
+ 993 0121 88       		.byte	-120
+ 994 0122 6C       		.byte	108
+ 995 0123 A8       		.byte	-88
+ 996 0124 17       		.byte	23
+ 997 0125 C4       		.byte	-60
+ 998 0126 16       		.byte	22
+ 999 0127 F4       		.byte	-12
+ 1000 0128 C2       		.byte	-62
+ 1001 0129 45       		.byte	69
+ 1002 012a E1       		.byte	-31
+ 1003 012b D6       		.byte	-42
+ 1004 012c 3F       		.byte	63
+ 1005 012d 3D       		.byte	61
+ 1006 012e 8E       		.byte	-114
+ 1007 012f 98       		.byte	-104
+ 1008 0130 28       		.byte	40
+ 1009 0131 4E       		.byte	78
+ 1010 0132 F6       		.byte	-10
+ 1011 0133 3E       		.byte	62
+ 1012 0134 A5       		.byte	-91
+ 1013 0135 F9       		.byte	-7
+ 1014 0136 0D       		.byte	13
+ 1015 0137 DF       		.byte	-33
+ 1016 0138 D8       		.byte	-40
+ 1017 0139 2B       		.byte	43
+ 1018 013a 66       		.byte	102
+ 1019 013b 7A       		.byte	122
+ 1020 013c 27       		.byte	39
+ 1021 013d 2F       		.byte	47
+ 1022 013e F1       		.byte	-15
+ 1023 013f 72       		.byte	114
+ 1024 0140 42       		.byte	66
+ 1025 0141 D4       		.byte	-44
+ 1026 0142 41       		.byte	65
+ 1027 0143 C0       		.byte	-64
+ 1028 0144 73       		.byte	115
+ 1029 0145 67       		.byte	103
+ 1030 0146 AC       		.byte	-84
+ 1031 0147 8B       		.byte	-117
+ 1032 0148 F7       		.byte	-9
+ 1033 0149 AD       		.byte	-83
+ 1034 014a 80       		.byte	-128
+ 1035 014b 1F       		.byte	31
+ 1036 014c CA       		.byte	-54
+ 1037 014d 2C       		.byte	44
+ 1038 014e AA       		.byte	-86
+ 1039 014f 34       		.byte	52
+ 1040 0150 D2       		.byte	-46
+ 1041 0151 0B       		.byte	11
+ 1042 0152 EE       		.byte	-18
+ 1043 0153 E9       		.byte	-23
+ 1044 0154 5D       		.byte	93
+ 1045 0155 94       		.byte	-108
+ 1046 0156 18       		.byte	24
+ 1047 0157 F8       		.byte	-8
+ 1048 0158 57       		.byte	87
+ 1049 0159 AE       		.byte	-82
+ 1050 015a 08       		.byte	8
+ 1051 015b C5       		.byte	-59
+ 1052 015c 13       		.byte	19
+ 1053 015d CD       		.byte	-51
+ 1054 015e 86       		.byte	-122
+ 1055 015f B9       		.byte	-71
+ 1056 0160 FF       		.byte	-1
+ 1057 0161 7D       		.byte	125
+ 1058 0162 C1       		.byte	-63
+ 1059 0163 31       		.byte	49
+ 1060 0164 F5       		.byte	-11
+ 1061 0165 8A       		.byte	-118
+ 1062 0166 6A       		.byte	106
+ 1063 0167 B1       		.byte	-79
+ 1064 0168 D1       		.byte	-47
+ 1065 0169 20       		.byte	32
+ 1066 016a D7       		.byte	-41
+ 1067 016b 02       		.byte	2
+ 1068 016c 22       		.byte	34
+ 1069 016d 04       		.byte	4
+ 1070 016e 68       		.byte	104
+ 1071 016f 71       		.byte	113
+ 1072 0170 07       		.byte	7
+ 1073 0171 DB       		.byte	-37
+ 1074 0172 9D       		.byte	-99
+ 1075 0173 99       		.byte	-103
+ 1076 0174 61       		.byte	97
+ 1077 0175 BE       		.byte	-66
+ 1078 0176 E6       		.byte	-26
+ 1079 0177 59       		.byte	89
+ 1080 0178 DD       		.byte	-35
+ 1081 0179 51       		.byte	81
+ 1082 017a 90       		.byte	-112
+ 1083 017b DC       		.byte	-36
+ 1084 017c 9A       		.byte	-102
+ 1085 017d A3       		.byte	-93
+ 1086 017e AB       		.byte	-85
+ 1087 017f D0       		.byte	-48
+ 1088 0180 81       		.byte	-127
+ 1089 0181 0F       		.byte	15
+ 1090 0182 47       		.byte	71
+ 1091 0183 1A       		.byte	26
+ 1092 0184 E3       		.byte	-29
+ 1093 0185 EC       		.byte	-20
+ 1094 0186 8D       		.byte	-115
+ 1095 0187 BF       		.byte	-65
+ 1096 0188 96       		.byte	-106
+ 1097 0189 7B       		.byte	123
+ 1098 018a 5C       		.byte	92
+ 1099 018b A2       		.byte	-94
+ 1100 018c A1       		.byte	-95
+ 1101 018d 63       		.byte	99
+ 1102 018e 23       		.byte	35
+ 1103 018f 4D       		.byte	77
+ 1104 0190 C8       		.byte	-56
+ 1105 0191 9E       		.byte	-98
+ 1106 0192 9C       		.byte	-100
+ 1107 0193 3A       		.byte	58
+ 1108 0194 0C       		.byte	12
+ 1109 0195 2E       		.byte	46
+ 1110 0196 BA       		.byte	-70
+ 1111 0197 6E       		.byte	110
+ 1112 0198 9F       		.byte	-97
+ 1113 0199 5A       		.byte	90
+ 1114 019a F2       		.byte	-14
+ 1115 019b 92       		.byte	-110
+ 1116 019c F3       		.byte	-13
+ 1117 019d 49       		.byte	73
+ 1118 019e 78       		.byte	120
+ 1119 019f CC       		.byte	-52
+ 1120 01a0 15       		.byte	21
+ 1121 01a1 FB       		.byte	-5
+ 1122 01a2 70       		.byte	112
+ 1123 01a3 75       		.byte	117
+ 1124 01a4 7F       		.byte	127
+ 1125 01a5 35       		.byte	53
+ 1126 01a6 10       		.byte	16
+ 1127 01a7 03       		.byte	3
+ 1128 01a8 64       		.byte	100
+ 1129 01a9 6D       		.byte	109
+ 1130 01aa C6       		.byte	-58
+ 1131 01ab 74       		.byte	116
+ 1132 01ac D5       		.byte	-43
+ 1133 01ad B4       		.byte	-76
+ 1134 01ae EA       		.byte	-22
+ 1135 01af 09       		.byte	9
+ 1136 01b0 76       		.byte	118
+ 1137 01b1 19       		.byte	25
+ 1138 01b2 FE       		.byte	-2
+ 1139 01b3 40       		.byte	64
+ 1140 01b4 12       		.byte	18
+ 1141 01b5 E0       		.byte	-32
+ 1142 01b6 BD       		.byte	-67
+ 1143 01b7 05       		.byte	5
+ 1144 01b8 FA       		.byte	-6
+ 1145 01b9 01       		.byte	1
+ 1146 01ba F0       		.byte	-16
+ 1147 01bb 2A       		.byte	42
+ 1148 01bc 5E       		.byte	94
+ 1149 01bd A9       		.byte	-87
+ 1150 01be 56       		.byte	86
+ 1151 01bf 43       		.byte	67
+ 1152 01c0 85       		.byte	-123
+ 1153 01c1 14       		.byte	20
+ 1154 01c2 89       		.byte	-119
+ 1155 01c3 9B       		.byte	-101
+ 1156 01c4 B0       		.byte	-80
+ 1157 01c5 E5       		.byte	-27
+ 1158 01c6 48       		.byte	72
+ 1159 01c7 79       		.byte	121
+ 1160 01c8 97       		.byte	-105
+ 1161 01c9 FC       		.byte	-4
+ 1162 01ca 1E       		.byte	30
+ 1163 01cb 82       		.byte	-126
+ 1164 01cc 21       		.byte	33
+ 1165 01cd 8C       		.byte	-116
+ 1166 01ce 1B       		.byte	27
+ 1167 01cf 5F       		.byte	95
+ 1168 01d0 77       		.byte	119
+ 1169 01d1 54       		.byte	84
+ 1170 01d2 B2       		.byte	-78
+ 1171 01d3 1D       		.byte	29
+ 1172 01d4 25       		.byte	37
+ 1173 01d5 4F       		.byte	79
+ 1174 01d6 00       		.byte	0
+ 1175 01d7 46       		.byte	70
+ 1176 01d8 ED       		.byte	-19
+ 1177 01d9 58       		.byte	88
+ 1178 01da 52       		.byte	82
+ 1179 01db EB       		.byte	-21
+ 1180 01dc 7E       		.byte	126
+ 1181 01dd DA       		.byte	-38
+ 1182 01de C9       		.byte	-55
+ 1183 01df FD       		.byte	-3
+ 1184 01e0 30       		.byte	48
+ 1185 01e1 95       		.byte	-107
+ 1186 01e2 65       		.byte	101
+ 1187 01e3 3C       		.byte	60
+ 1188 01e4 B6       		.byte	-74
+ 1189 01e5 E4       		.byte	-28
+ 1190 01e6 BB       		.byte	-69
+ 1191 01e7 7C       		.byte	124
+ 1192 01e8 0E       		.byte	14
+ 1193 01e9 50       		.byte	80
+ 1194 01ea 39       		.byte	57
+ 1195 01eb 26       		.byte	38
+ 1196 01ec 32       		.byte	50
+ 1197 01ed 84       		.byte	-124
+ 1198 01ee 69       		.byte	105
+ 1199 01ef 93       		.byte	-109
+ 1200 01f0 37       		.byte	55
+ 1201 01f1 E7       		.byte	-25
+ 1202 01f2 24       		.byte	36
+ 1203 01f3 A4       		.byte	-92
+ 1204 01f4 CB       		.byte	-53
+ 1205 01f5 53       		.byte	83
+ 1206 01f6 0A       		.byte	10
+ 1207 01f7 87       		.byte	-121
+ 1208 01f8 D9       		.byte	-39
+ 1209 01f9 4C       		.byte	76
+ 1210 01fa 83       		.byte	-125
+ 1211 01fb 8F       		.byte	-113
+ 1212 01fc CE       		.byte	-50
+ 1213 01fd 3B       		.byte	59
+ 1214 01fe 4A       		.byte	74
+ 1215 01ff B7       		.byte	-73
+ 1216              		.text
+ 1217              	.Letext0:
+ 1218              		.file 2 "/usr/include/newlib/machine/_default_types.h"
+ 1219              		.file 3 "/usr/include/newlib/sys/_stdint.h"
+ 1220              		.file 4 ".././hal/stm32f3/stm32f3_hal.h"
+ 1221              		.file 5 ".././simpleserial/simpleserial.h"
+ 1222              		.file 6 ".././hal/hal.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 simpleserial-base.c
+     /tmp/ccvFVCNK.s:20     .text.reset:0000000000000000 $t
+     /tmp/ccvFVCNK.s:25     .text.reset:0000000000000000 reset
+     /tmp/ccvFVCNK.s:42     .text.get_key:0000000000000000 $t
+     /tmp/ccvFVCNK.s:47     .text.get_key:0000000000000000 get_key
+     /tmp/ccvFVCNK.s:59     .text.SEED_G:0000000000000000 $t
+     /tmp/ccvFVCNK.s:64     .text.SEED_G:0000000000000000 SEED_G
+     /tmp/ccvFVCNK.s:160    .text.SEED_G:0000000000000090 $d
+     /tmp/ccvFVCNK.s:165    .text.KeyGen:0000000000000000 $t
+     /tmp/ccvFVCNK.s:170    .text.KeyGen:0000000000000000 KeyGen
+     /tmp/ccvFVCNK.s:269    .text.KeyGen:0000000000000074 $d
+     /tmp/ccvFVCNK.s:274    .text.SEED_F:0000000000000000 $t
+     /tmp/ccvFVCNK.s:279    .text.SEED_F:0000000000000000 SEED_F
+     /tmp/ccvFVCNK.s:360    .text.get_pt:0000000000000000 $t
+     /tmp/ccvFVCNK.s:365    .text.get_pt:0000000000000000 get_pt
+     /tmp/ccvFVCNK.s:610    .text.startup.main:0000000000000000 $t
+     /tmp/ccvFVCNK.s:615    .text.startup.main:0000000000000000 main
+     /tmp/ccvFVCNK.s:665    .text.startup.main:0000000000000038 $d
+     /tmp/ccvFVCNK.s:679    .rodata:0000000000000000 SEED_KC
+     /tmp/ccvFVCNK.s:959    .data:0000000000000100 SEED_S2box
+     /tmp/ccvFVCNK.s:700    .data:0000000000000000 SEED_S1box
+     /tmp/ccvFVCNK.s:675    .rodata:0000000000000000 $d
+                     .debug_frame:0000000000000010 $d
+
+UNDEFINED SYMBOLS
+trigger_high
+trigger_low
+simpleserial_put
+platform_init
+init_uart
+trigger_setup
+simpleserial_init
+simpleserial_addcmd
+simpleserial_get
