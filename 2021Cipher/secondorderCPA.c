@@ -1,12 +1,21 @@
-#include<stdio.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h> 
+#include <math.h>
 #include <time.h>
 
-unsigned char mask[10];
-unsigned char MSbox[256];
+//#define _FOLD_ "C:\\Users\\PC\\Desktop\\부채널연구\\파형23000point5000개0x1fUPver\\"    #define _FOLD_ "C:\\Users\\PC\\Desktop\\부채널연구\\파형23000changemask2 0x1f\\"    
+#define _FOLD_ "C:\\Users\\PC\\Desktop\\부채널연구\\파형23000changemask2 0x1f\\"   
+#define TraceFN "trace.bin"  
+#define AlignedTraceFN "trace.bin"
+
+#define PlaintextFN "textin.npy"
 
 
-unsigned char Sbox[256] = {
+#define startpoint 0 
+#define endpoint 5000 
+
+static unsigned char AES_Sbox[256] = {
    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
    0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
    0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
@@ -22,376 +31,497 @@ unsigned char Sbox[256] = {
    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
    0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
    0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
-   0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 };
-
-unsigned Rcon[10] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36 };
-
-
-void Mask_RK_Update(unsigned char* out, unsigned char* in, int i)
-{
-    unsigned char tmp[4];
-
-    tmp[0] = in[13] ^ mask[7];
-    tmp[1] = in[14] ^ mask[8];
-    tmp[2] = in[15] ^ mask[9];
-    tmp[3] = in[12] ^ mask[6];
-
-    tmp[0] = MSbox[tmp[0]] ^ Rcon[i];
-    tmp[1] = MSbox[tmp[1]];
-    tmp[2] = MSbox[tmp[2]];
-    tmp[3] = MSbox[tmp[3]];
-
-    // 첫번째 블록 
-    out[0] = in[0] ^ tmp[0] ^ mask[1];
-    out[1] = in[1] ^ tmp[1] ^ mask[1];
-    out[2] = in[2] ^ tmp[2] ^ mask[1];
-    out[3] = in[3] ^ tmp[3] ^ mask[1];
-    // 두번째 블록
-    out[4] = in[4] ^ mask[0] ^ out[0] ^ mask[6];
-    out[5] = in[5] ^ mask[0] ^ out[1] ^ mask[7];
-    out[6] = in[6] ^ mask[0] ^ out[2] ^ mask[8];
-    out[7] = in[7] ^ mask[0] ^ out[3] ^ mask[9];
-    // 세번째 블록
-    out[8] = in[8] ^ mask[0] ^ out[4] ^ mask[6];
-    out[9] = in[9] ^ mask[0] ^ out[5] ^ mask[7];
-    out[10] = in[10] ^ mask[0] ^ out[6] ^ mask[8];
-    out[11] = in[11] ^ mask[0] ^ out[7] ^ mask[9];
-    // 네번째 블록
-    out[12] = in[12] ^ mask[6] ^ out[8] ^ mask[0];
-    out[13] = in[13] ^ mask[7] ^ out[9] ^ mask[0];
-    out[14] = in[14] ^ mask[8] ^ out[10] ^ mask[0];
-    out[15] = in[15] ^ mask[9] ^ out[11] ^ mask[0];
-}
-
-void RK_Update(unsigned char* out, unsigned char* in, int i)
-{
-    unsigned char tmp[4];
-
-    unsigned Rcon[10] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36 };
+   0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
+};
 
 
-    tmp[0] = in[13]; tmp[1] = in[14]; tmp[2] = in[15]; tmp[3] = in[12];
-
-    tmp[0] = Sbox[tmp[0]] ^ Rcon[i];
-    tmp[1] = Sbox[tmp[1]];
-    tmp[2] = Sbox[tmp[2]];
-    tmp[3] = Sbox[tmp[3]];
-
-    out[0] = in[0] ^ tmp[0]; out[1] = in[1] ^ tmp[1]; out[2] = in[2] ^ tmp[2]; out[3] = in[3] ^ tmp[3];
-    out[4] = in[4] ^ out[0]; out[5] = in[5] ^ out[1]; out[6] = in[6] ^ out[2]; out[7] = in[7] ^ out[3];
-    out[8] = in[8] ^ out[4]; out[9] = in[9] ^ out[5]; out[10] = in[10] ^ out[6]; out[11] = in[11] ^ out[7];
-    out[12] = in[12] ^ out[8]; out[13] = in[13] ^ out[9]; out[14] = in[14] ^ out[10]; out[15] = in[15] ^ out[11];
-}
-
-void Mask_RK_Update2(unsigned char* out, unsigned char* in)
-{
-    unsigned char tmp[4];
-
-    tmp[0] = in[13] ^ mask[7];
-    tmp[1] = in[14] ^ mask[8];
-    tmp[2] = in[15] ^ mask[9];
-    tmp[3] = in[12] ^ mask[6];
-
-    tmp[0] = MSbox[tmp[0]] ^ Rcon[9];
-    tmp[1] = MSbox[tmp[1]];
-    tmp[2] = MSbox[tmp[2]];
-    tmp[3] = MSbox[tmp[3]];
-
-    // 첫번째 블록
-    out[0] = in[0] ^ tmp[0];
-    out[1] = in[1] ^ tmp[1];
-    out[2] = in[2] ^ tmp[2];
-    out[3] = in[3] ^ tmp[3];
-    // 두번째 블록
-    out[4] = in[4] ^ out[0];
-    out[5] = in[5] ^ out[1];
-    out[6] = in[6] ^ out[2];
-    out[7] = in[7] ^ out[3];
-    // 세번째 블록
-    out[8] = in[8] ^ mask[6] ^ out[4];
-    out[9] = in[9] ^ mask[7] ^ out[5];
-    out[10] = in[10] ^ mask[8] ^ out[6];
-    out[11] = in[11] ^ mask[9] ^ out[7];
-    // 네번째 블록
-    out[12] = in[12] ^ mask[6] ^ out[8];
-    out[13] = in[13] ^ mask[7] ^ out[9];
-    out[14] = in[14] ^ mask[8] ^ out[10];
-    out[15] = in[15] ^ mask[9] ^ out[11];
-
-    // 마스크 옳바르게 바꾸기 
-    out[0] = out[0] ^ mask[6] ^ mask[0];
-    out[1] = out[1] ^ mask[7] ^ mask[0];
-    out[2] = out[2] ^ mask[8] ^ mask[0];
-    out[3] = out[3] ^ mask[9] ^ mask[0];
-
-    out[8] = out[8] ^ mask[0];
-    out[9] = out[9] ^ mask[0];
-    out[10] = out[10] ^ mask[0];
-    out[11] = out[11] ^ mask[0];
-}
-
-
-void Mask_KeyExpansion(unsigned char* MK, unsigned char* RK)
-{
-    int i, j;
-
-    for (i = 0; i < 16; i += 4)
-    {
-        RK[i] = MK[i] ^ mask[6] ^ mask[0];
-        RK[i + 1] = MK[i + 1] ^ mask[7] ^ mask[0];
-        RK[i + 2] = MK[i + 2] ^ mask[8] ^ mask[0];
-        RK[i + 3] = MK[i + 3] ^ mask[9] ^ mask[0];
-    }
-
-    for (i = 0; i < 9; i++)
-    {
-        Mask_RK_Update(RK + 16, RK, i);
-        RK += 16;
-    }
-
-    Mask_RK_Update2(RK + 16, RK);
-}
-
-void KeyExpansion(unsigned char* MK, unsigned char* RK)
-{
+double Cov(float* x, float* y, int size) {
+    double Sxy = 0, Sx = 0, Sy = 0;
     int i;
-
-    for (i = 0; i < 16; i++)
-        RK[i] = MK[i];
-
-    for (i = 0; i < 10; i++) {
-
-        RK_Update(RK + 16, RK, i);
-        RK += 16;
+    for (i = 0; i < size; i++) {
+        Sxy += x[i] * y[i];
+        Sx += x[i];
+        Sy += y[i];
     }
+
+
+    return (Sxy - Sx * Sy / (double)size) / (double)size;
 }
 
 
-void KeyAddition(unsigned char* input, unsigned char* RK)
-{
+double Corr(float* x, float* y, int size) {
+    double Sxy = 0, Sx = 0, Sy = 0, Sxx = 0, Syy = 0;
     int i;
+    for (i = 0; i < size; i++) {
+        Sxy += x[i] * y[i];
+        Sx += x[i];
+        Sy += y[i];
+        Sxx += x[i] * x[i];
+        Syy += y[i] * y[i];
+    }
 
-    for (i = 0; i < 16; i++)
-        input[i] ^= RK[i];
+
+
+
+    return ((double)size * Sxy - Sx * Sy) / sqrt(((double)size * Sxx - Sx * Sx) * ((double)size * Syy - Sy * Sy));
 }
 
 
-void Mask_Subbyte(unsigned char* input)
-{
-    int i;
 
-    for (i = 0; i < 16; i++)
-        input[i] = MSbox[input[i]];
-}
-
-void Subbyte(unsigned char* input)
-{
-    int i;
-
-    for (i = 0; i < 16; i++)
-        input[i] = Sbox[input[i]];
-}
+void SubAligned(float* data1, float* data2, int windowsize, int stepsize, int  threshold, int TraceLength) {
+    int i, j, size, maxcovpos, k;
+    float* x, * y;
+    double cov, maxcov;
 
 
-void ShiftRow(unsigned char* input)
-{
-    unsigned char tmp;
-
-    tmp = input[5]; input[5] = input[9]; input[9] = input[13]; input[13] = input[1]; input[1] = tmp;
-
-    tmp = input[10]; input[10] = input[2]; input[2] = tmp;
-    tmp = input[14]; input[14] = input[6]; input[6] = tmp;
-
-    tmp = input[11]; input[11] = input[7]; input[7] = input[3]; input[3] = input[15]; input[15] = tmp;
-}
+    for (i = 0; i < (TraceLength - windowsize); i += stepsize) {
 
 
-unsigned char MUL2(unsigned char a)
-{
-    if (a & 0x80)
-        return (a << 1) ^ 0x1b;
-    else
-        return a << 1;
-}
-
-unsigned char MUL3(unsigned char a)
-{
-    return MUL2(a) ^ a;
-}
+        maxcovpos = 0;
+        maxcov = 0;
 
 
-void Submix(unsigned char* in)
-{
-    unsigned char tmp[4];
-
-    tmp[0] = MUL2(in[0]) ^ MUL3(in[1]) ^ in[2] ^ in[3];
-    tmp[1] = in[0] ^ MUL2(in[1]) ^ MUL3(in[2]) ^ in[3];
-    tmp[2] = in[0] ^ in[1] ^ MUL2(in[2]) ^ MUL3(in[3]);
-    tmp[3] = MUL3(in[0]) ^ in[1] ^ in[2] ^ MUL2(in[3]);
-
-    in[0] = tmp[0]; in[1] = tmp[1]; in[2] = tmp[2]; in[3] = tmp[3];
-}
+        for (j = -threshold; j < threshold; j++) {
 
 
-void MixColums(unsigned char* input)
-{
-    Submix(input);
-    Submix(input + 4);
-    Submix(input + 8);
-    Submix(input + 12);
-}
+
+            if (j < 0) {
+                x = data1 + i;
+                y = data2 + i - j;
+                size = windowsize - abs(j);
+            }
+            else {
+                x = data1 + i + j;
+                y = data2 + i;
+                size = windowsize - abs(j);
+            }
+
+            cov = Cov(x, y, size);
+
+            if (cov > maxcov) {
+                maxcovpos = j;
+                maxcov = cov;
+            }
+        }
 
 
-void Remask(unsigned char* input)
-{
-    for (int i = 0; i < 16; i += 4)
-    {
-        input[i] = input[i] ^ (mask[1] ^ mask[2]);
-        input[i + 1] = input[i + 1] ^ (mask[1] ^ mask[3]);
-        input[i + 2] = input[i + 2] ^ (mask[1] ^ mask[4]);
-        input[i + 3] = input[i + 3] ^ (mask[1] ^ mask[5]);
+
+
+
+        if (maxcovpos < 0) {
+            for (k = i; k < (TraceLength + maxcovpos); k++) {
+                data2[k] = data2[k - maxcovpos];
+
+            }
+        }
+        else {
+            for (k = (TraceLength - maxcovpos - 1); k >= i; k--) {
+                data2[k + maxcovpos] = data2[k];
+            }
+        }
     }
 }
 
 
-void Mask_ENC(unsigned char* in, unsigned char* RK, unsigned char* out)
-{
-    int i;
-    unsigned char temp[16];
 
-    // 평문 마스킹 //
-    for (i = 0; i < 16; i += 4)
-    {
-        temp[i] = in[i] ^ mask[6]; //M2'
-        temp[i + 1] = in[i + 1] ^ mask[7];
-        temp[i + 2] = in[i + 2] ^ mask[8];
-        temp[i + 3] = in[i + 3] ^ mask[9];
+
+
+
+
+void Alignment() {
+    int windowsize = 500;
+    int stepsize = 450;
+    int threshold = 100;
+    char buf[256];
+    int err, TraceLength, TraceNum, i;
+    FILE* rfp, * wfp;
+
+
+
+
+    float* data1, * data2;
+    sprintf_s(buf, 256 * sizeof(char)/*sizeof(buf)*/, "%s%s", _FOLD_, TraceFN);   if ((err = fopen_s(&rfp, buf, "rb"))) {
+        printf("File Open Error1!!\n");
     }
 
-    for (i = 0; i < 9; i++)
-    {
-        KeyAddition(temp, RK);
-        Mask_Subbyte(temp);
-        ShiftRow(temp);
-        Remask(temp);
-        MixColums(temp);
-        RK += 16;
+    sprintf_s(buf, 256 * sizeof(char), "%s%s", _FOLD_, AlignedTraceFN);
+    if ((err = fopen_s(&wfp, buf, "wb"))) {
+        printf("File Open Error2!!\n");
     }
 
-    KeyAddition(temp, RK);
-    Mask_Subbyte(temp);
-    ShiftRow(temp);
-    RK += 16;
-    KeyAddition(temp, RK);
+    fread(&TraceLength, sizeof(int), 1, rfp);     fwrite(&TraceLength, sizeof(int), 1, wfp);   fread(&TraceNum, sizeof(int), 1, rfp);      fwrite(&TraceNum, sizeof(int), 1, wfp);
 
-    for (i = 0; i < 16; i++)
-    {
-        out[i] = temp[i];
+    data1 = (float*)calloc(TraceLength, sizeof(float));    data2 = (float*)calloc(TraceLength, sizeof(float));
+    fread(data1, sizeof(float), TraceLength, rfp);    fwrite(data1, sizeof(float), TraceLength, wfp);
+    for (i = 1; i < TraceNum; i++) {
+        fread(data2, sizeof(float), TraceLength, rfp);       SubAligned(data1, data2, windowsize, stepsize, threshold, TraceLength);        fwrite(data2, sizeof(float), TraceLength, wfp);
     }
+    fclose(rfp);
+    fclose(wfp);
+
+    free(data1);    free(data2);
 }
 
-void ENC(unsigned char* in, unsigned char* RK, unsigned char* out)
-{
-    int i;
-    unsigned char temp[16];
-
-    for (i = 0; i < 16; i++)
-    {
-        temp[i] = in[i];
+void CPA() {
+    unsigned char** plaintext = NULL;    float** data;    char buf[256];
+    int err, TraceLength=40000, TraceNum=5000, i, j, key, k, maxkey;
+    FILE* rfp, * wfp;
+    unsigned char temp[34], x, y, iv, hw_iv;
+    double* Sx, * Sxx, * Sxy, * corrT;    double Sy, Syy, max;
+    sprintf_s(buf, 256 * sizeof(char), "%s%s", _FOLD_, TraceFN);
+    if ((err = fopen_s(&rfp, buf, "rb"))) {
+        printf("File Open Error1!!\n");
+        exit(0);
     }
 
-    for (i = 0; i < 9; i++)
-    {
-        KeyAddition(temp, RK);
-        Subbyte(temp);
-        ShiftRow(temp);
-        MixColums(temp);
-        RK += 16;
+
+
+
+
+    data = (float**)calloc(TraceNum, sizeof(float*));
+
+    for (i = 0; i < TraceNum; i++) {
+        data[i] = (float*)calloc(TraceLength, sizeof(float));
     }
 
-    KeyAddition(temp, RK);
-    Subbyte(temp);
-    ShiftRow(temp);
-    RK += 16;
-    KeyAddition(temp, RK);
 
-    for (i = 0; i < 16; i++)
-    {
-        out[i] = temp[i];
+    for (i = 0; i < TraceNum; i++) {
+        fread(data[i], sizeof(float), TraceLength, rfp);
     }
+
+    fclose(rfp);
+
+
+    sprintf_s(buf, 256 * sizeof(char), "%s%s", _FOLD_, PlaintextFN);
+    if ((err = fopen_s(&rfp, buf, "rb"))) {
+        printf("File Open Error!2!\n");
+        exit(0);
+    }
+
+
+    plaintext = (unsigned char**)calloc(TraceNum, sizeof(unsigned char*));
+
+    for (i = 0; i < TraceNum; i++) {
+        plaintext[i] = (unsigned char*)calloc(16, sizeof(unsigned char));
+    }
+    fseek(rfp, 128, SEEK_SET);
+    for (i = 0; i < TraceNum; i++) {
+        fread(plaintext[i], sizeof(unsigned char), 16, rfp);
+    }
+    printf("hih");
+    /*
+    for (i = 0; i < TraceNum; i++) {
+        fgets(temp, 34, rfp);
+
+
+        for (j = 0; j < 16; j++) {
+            x = temp[2 * j];
+            y = temp[2 * j + 1];
+
+
+            if (x >= 'A' && x <= 'F')
+                x = x - 'A' + 10;
+            else if (x >= 'a' && x <= 'f')
+                x = x - 'a' + 10;
+            else if (x >= '0' && x <= '9')
+                x -= '0';
+
+            if (y >= 'A' && y <= 'F') y = y - 'A' + 10;
+            else if (y >= 'a' && y <= 'z') y = y - 'a' + 10;
+            else if (y >= '0' && y <= '9') y -= '0';
+
+
+
+            plaintext[i][j] = x * 16 + y;
+        }
+    }
+    fclose(rfp);
+
+
+    */
+
+    Sx = (double*)calloc(TraceLength, sizeof(double));
+    Sxx = (double*)calloc(TraceLength, sizeof(double));
+    Sxy = (double*)calloc(TraceLength, sizeof(double));
+    corrT = (double*)calloc(TraceLength, sizeof(double));
+
+    /*
+
+    for (i = 0; i < TraceNum; i++) {
+       for (j = startpoint
+          Sx[j] += data[i][j];
+          Sxx[j] += data[i][j] * data[i][j];
+       }
+    }
+    */
+
+    for (i = startpoint; i < endpoint; i++) {
+        for (j = 0; j < TraceNum; j++) {
+            Sx[i] += data[j][i];
+            Sxx[i] += data[j][i] * data[j][i];
+        }
+    }
+
+    Sy = 0;
+    Syy = 0;
+    
+   
+    for (int b = 0; b < 16; b++) {
+        Sy = 0;
+        Syy = 0;
+        memset(Sxy, 0, sizeof(double) * TraceLength);
+        
+        for (j = 0; j < TraceNum; j++) {
+            iv = plaintext[j][b];
+            hw_iv = 0;
+
+
+            for (k = 0; k < 8; k++) {
+                hw_iv += ((iv >> k) & 1);
+            }
+
+            Sy += hw_iv;
+            Syy += hw_iv * hw_iv;
+
+            for (k = startpoint /*0*/; k < endpoint /*TraceLength*/; k++) {
+                Sxy[k] += hw_iv * data[j][k];
+            }
+
+
+            /* for (k = 0; k < TraceNum; k++) {
+               Sxy[j] += hw_iv * data[k][j];
+               } */
+            for (k = startpoint /*0*/; k < endpoint /*TraceLength*/; k++) {
+                corrT[k] = ((double)TraceNum * Sxy[k] - Sx[k] * Sy) / sqrt(((double)TraceNum * Sxx[k] - Sx[k] * Sx[k]) * ((double)TraceNum * Syy - Sy * Sy));
+            }
+
+        }
+
+        sprintf_s(buf, 256 * sizeof(char), "%scorrtrace1\\cpa%02x.corrtrace", _FOLD_ , b);
+        if ((err = fopen_s(&wfp, buf, "wb"))) {
+            printf("File Open Error5!!\n");
+        }
+
+        fwrite(corrT, sizeof(double), TraceLength, wfp);
+        fclose(wfp);
+        printf("%d round finish", b);
+    }
+    
+
+
+
+
+    for (i = 0; i < 16; i++) {
+        max = 0;
+        maxkey = 0;
+
+        int start1 = clock();
+        for (key = 0; key < 0xff; key++) {
+
+            Sy = 0;
+            Syy = 0;
+            memset(Sxy, 0, sizeof(double) * TraceLength);
+
+
+            for (j = 0; j < TraceNum; j++) {
+                iv = AES_Sbox[plaintext[j][i] ^ key];
+                hw_iv = 0;
+
+
+                for (k = 0; k < 8; k++) {
+                    hw_iv += ((iv >> k) & 1);
+                }
+
+                Sy += hw_iv;
+                Syy += hw_iv * hw_iv;
+
+                for (k = startpoint /*0*/; k < endpoint /*TraceLength*/; k++) {
+                    Sxy[k] += hw_iv * data[j][k];
+                }
+
+
+                /* for (k = 0; k < TraceNum; k++) {
+                   Sxy[j] += hw_iv * data[k][j];
+                   } */
+            }
+
+
+            for (k = startpoint ; k < endpoint; k++) {
+                corrT[k] = ((double)TraceNum * Sxy[k] - Sx[k] * Sy) / sqrt(((double)TraceNum * Sxx[k] - Sx[k] * Sx[k]) * ((double)TraceNum * Syy - Sy * Sy));
+
+                if (fabs(corrT[k]) > max) {
+                    maxkey = key;
+                    max = fabs(corrT[k]);
+                }
+            }
+
+
+
+            sprintf_s(buf, 256 * sizeof(char), "%scorrtrace3\\%02dth_block_%02x.corrtrace", _FOLD_, i, key);
+            if ((err = fopen_s(&wfp, buf, "wb"))) {
+                printf("File Open Error5!!\n");
+            }
+            fwrite(corrT, sizeof(double), TraceLength, wfp);
+            fclose(wfp);
+            printf(".");
+        }
+        int end1 = clock();
+        float res1 = (float)(end1 - start1) / CLOCKS_PER_SEC;
+        printf("%02dth_block: maxkey(%02x), maxcorr(%lf)\n", i, maxkey, max);
+        printf(" 일반함수 소요된 시간 : %.3f \n", res1);
+        printf("hghi");
+        
+    }
+    free(Sx);
+    free(Sxx);
+    free(Sxy);
+    free(corrT);
+    free(data);
+    free(plaintext);
 }
+
+
+void secondorderCPA() {
+    unsigned char** plaintext = NULL;    float** data;    char buf[256];
+    float** Cut1;
+    int err, TraceLength = 23000, TraceNum = 5000, i, j, key, k, maxkey;
+    FILE* rfp, * wfp;
+    unsigned char temp[34], x, y, iv, hw_iv;
+    double* Sx, * Sxx, * Sxy, * corrT;    double Sy, Syy, max;
+    sprintf_s(buf, 256 * sizeof(char), "%s%s", _FOLD_, TraceFN);
+    if ((err = fopen_s(&rfp, buf, "rb"))) {
+        printf("File Open Error1!!\n");
+        exit(0);
+    }
+
+    data = (float**)calloc(TraceNum, sizeof(float*));
+
+    for (i = 0; i < TraceNum; i++) {
+        data[i] = (float*)calloc(TraceLength, sizeof(float));
+    }
+
+
+    for (i = 0; i < TraceNum; i++) {
+        fread(data[i], sizeof(float), TraceLength, rfp);
+    }
+
+    fclose(rfp);
+
+
+    sprintf_s(buf, 256 * sizeof(char), "%s%s", _FOLD_, PlaintextFN);
+    if ((err = fopen_s(&rfp, buf, "rb"))) {
+        printf("File Open Error!2!\n");
+        exit(0);
+    }
+
+
+    plaintext = (unsigned char**)calloc(TraceNum, sizeof(unsigned char*));
+
+    for (i = 0; i < TraceNum; i++) {
+        plaintext[i] = (unsigned char*)calloc(16, sizeof(unsigned char));
+    }
+    fseek(rfp, 128, SEEK_SET);
+    for (i = 0; i < TraceNum; i++) {
+        fread(plaintext[i], sizeof(unsigned char), 16, rfp);
+    }
+ 
+    unsigned int m = 0;
+    unsigned int Start_Msub = 20400;
+    unsigned int End_Msub =  20900;
+    unsigned int Start_MSbox = 11110;
+    unsigned int End_MSbox = 11190;
+    unsigned int len1 = (End_MSbox -Start_MSbox) * (End_Msub- Start_Msub);
+    Cut1 = (float**)calloc(TraceNum, sizeof(float*));
+    for (i = 0; i < TraceNum; i++) {
+        Cut1[i] = (float*)calloc(len1, sizeof(float));
+    }
+    float *plus = (float*)calloc(TraceLength, sizeof(float));
+    float *Mean = (float*)calloc(TraceLength, sizeof(float));
+    for (int i = 0; i < TraceNum; i++) {
+        for (int j = 0; j < TraceLength; j++) {
+            plus[j] += data[i][j];
+        }
+    }
+
+    for (int i = 0; i < TraceLength; i++) {
+        Mean[i] = (float)(plus[i] / 5000);
+    }
+    
+    for (i = 0; i < TraceNum; i++) {
+        m = 0;
+        for ( j = Start_Msub; j < End_Msub; j++) {
+            for ( k = Start_MSbox; k < End_MSbox; k++) {
+                Cut1[i][m + ( k-Start_MSbox)] = (data[i][k] - Mean[k]) * (data[i][j] - Mean[j]);
+            }
+            m += End_MSbox - Start_MSbox;
+        }
+    }
+ 
+    Sx = (double*)calloc(len1, sizeof(double));
+    Sxx = (double*)calloc(len1, sizeof(double));
+    Sxy = (double*)calloc(len1, sizeof(double));
+    corrT = (double*)calloc(len1, sizeof(double));
+    for (i = 0; i < len1; i++) {
+        for (j = 0; j < TraceNum; j++) {
+            Sx[i] += Cut1[j][i];
+            Sxx[i] += Cut1[j][i] * Cut1[j][i];
+        }
+    }
+    Sy = 0;
+    Syy = 0;
+    max = 0;
+    memset(Sxy, 0, sizeof(double) * len1);
+    for (key = 0; key < 256; key++) {
+        Sy = 0;
+        Syy = 0;
+        memset(Sxy, 0, sizeof(double) * len1);
+        for (j = 0; j < TraceNum; j++) {
+            iv = AES_Sbox[plaintext[j][0] ^ key];
+            hw_iv = 0;
+
+            for (k = 0; k < 8; k++) {
+                hw_iv += ((iv >> k) & 1);
+            }
+
+            Sy += hw_iv;
+            Syy += hw_iv * hw_iv;
+
+            for (k = 0 /*0*/; k < len1 /*TraceLength*/; k++) {
+                Sxy[k] += hw_iv * Cut1[j][k];
+            }
+        }
+        for (k = 0; k < len1; k++) {
+            corrT[k] = ((double)TraceNum * Sxy[k] - Sx[k] * Sy) / sqrt(((double)TraceNum * Sxx[k] - Sx[k] * Sx[k]) * ((double)TraceNum * Syy - Sy * Sy));
+
+            if (fabs(corrT[k]) > max) {
+                maxkey = key;
+                max = fabs(corrT[k]);
+            }
+        }
+        sprintf_s(buf, 256 * sizeof(char), "%scorrtrace0\\block_%02x.corrtrace", _FOLD_, key);
+        if ((err = fopen_s(&wfp, buf, "wb"))) {
+            printf("File Open Error5!!\n");
+        }
+        fwrite(corrT, sizeof(double), len1, wfp);
+        fclose(wfp);
+        printf("Now key (0x%02x) , corr (%lf) : %02dth_block: maxkey(%02x), maxcorr(%lf)\n", key, corrT[0], i, maxkey, max);
+    }
+    free(Sx);
+    free(Sxx);
+    free(Sxy);
+    free(corrT);
+    free(data);
+    free(plaintext);
+
+
+    printf("hihi");
+}
+
+
+
 
 
 int main() {
-    unsigned char in[16] = { 0x35, 0x97  ,0x08  ,0xD8  ,0xC9 , 0x8E , 0x4D  ,0x40 ,0x20  ,0xC2 ,0x7F ,0x9C  ,0x53 ,0xDD ,0xEF ,0xBE };
-    unsigned char MK[16] = { 0x1f,0x2f,0x3f,0xf4,0xd5,0x7d,0x88,0x11,0x16,0xc4 ,0xdd,0x12,0x65,0xe4,0x11,0x1a };
-    unsigned char out[16] = { 0x00, };
-    unsigned char RK[176] = { 0x00 };
-    int i;
-
-    // 난수 생성 // 
-    srand((unsigned)time(0));
-    mask[0] = rand(); // M
-    mask[1] = rand(); // M'  
-    mask[2] = rand(); // M1
-    mask[3] = rand(); // M2
-    mask[4] = rand(); // M3
-    mask[5] = rand(); // M4
-
-    printf("M  = %x \n", mask[0]);
-    printf("M' = %x \n", mask[1]);
-    printf("M1  = %x \n", mask[2]);
-    printf("M2  = %x \n", mask[3]);
-
-    // 마스킹 S-box 연산 //   
-    for (i = 0; i < 256; i++)
-        MSbox[i ^ mask[0]] = Sbox[i] ^ mask[1];
-
-    // M1'~ M4' 생성 //  
-    mask[6] = MUL2(mask[2]) ^ MUL3(mask[3]) ^ mask[4] ^ mask[5];// M1'
-    mask[7] = mask[2] ^ MUL2(mask[3]) ^ MUL3(mask[4]) ^ mask[5];// M2'
-    mask[8] = mask[2] ^ mask[3] ^ MUL2(mask[4]) ^ MUL3(mask[5]);// M3'
-    mask[9] = MUL3(mask[2]) ^ mask[3] ^ mask[4] ^ MUL2(mask[5]);// M4'
-    printf("MSBOX\n");
-    for (int i = 0; i < 256; i++) {
-        printf("%02x ", MSbox[i]);
-    }
-
-    printf("\n");
-    printf("Master Key: ");
-    for (i = 0; i < 16; i++)
-        printf("%02x ", MK[i]);
-    printf("\n");
-
-
-    printf("\n< Normal AES Encrytion > \n");
-    KeyExpansion(MK, RK);
-    ENC(in, RK, out);
-
-    printf("Plaintext: ");
-    for (i = 0; i < 16; i++)
-        printf("%02x ", in[i]);
-    printf("\n");
-
-    printf("Ciphertext: ");
-    for (i = 0; i < 16; i++)
-        printf("%02x ", out[i]);
-    printf("\n");
-
-
-    printf("\n< Masked AES Encrytion > \n");
-    Mask_KeyExpansion(MK, RK);
-    Mask_ENC(in, RK, out);
-
-    printf("Plaintext: ");
-    for (i = 0; i < 16; i++)
-        printf("%02x ", in[i]);
-    printf("\n");
-
-    printf("Ciphertext: ");
-    for (i = 0; i < 16; i++)
-        printf("%02x ", out[i]);
-    printf("\n");
-
-    return 0;
+    secondorderCPA();
+    //CPA();
 }
