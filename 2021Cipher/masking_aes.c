@@ -348,26 +348,27 @@ uint8_t get_pt(uint8_t* pt)
 
 {
 	int i;
-    unsigned char MK[16] = {0xe1,0x2f,0x3f,0xf4,0xd5,0x7d,0x88,0x11,0x16,0xc4 ,0xdd,0x12,0x65,0xe4,0x11,0x1a};
+    unsigned char MK[16] = {0x1f,0x2f,0x3f,0xf4,0xd5,0x7d,0x88,0x11,0x16,0xc4 ,0xdd,0x12,0x65,0xe4,0x11,0x1a};
     unsigned char CT[16] = {0x00, };
     unsigned char RK[176] = {0x00 , };
     
 	trigger_high();
-    mask[0] = Sbox[pt[0]];
-    mask[1] = Sbox[pt[1]];
-    mask[2] = Sbox[pt[2]];
-    mask[3] = Sbox[pt[3]];
-    mask[4] = Sbox[pt[4]];
-    mask[5] = Sbox[pt[5]];
+    mask[0] = Sbox[pt[15]];
+    mask[1] = Sbox[pt[14]];
+    mask[2] = Sbox[pt[13]];
+    mask[3] = Sbox[pt[12]];
+    mask[4] = Sbox[pt[11]];
+    mask[5] = Sbox[pt[10]];
     for (i = 0; i < 256; i++)
       MSbox[i ^ mask[0]] = Sbox[i] ^ mask[1];
+    
     mask[6] = MUL2(mask[2]) ^ MUL3(mask[3]) ^ mask[4] ^ mask[5];
     mask[7] = mask[2] ^ MUL2(mask[3]) ^ MUL3(mask[4]) ^ mask[5];
     mask[8] = mask[2] ^ mask[3] ^ MUL2(mask[4]) ^ MUL3(mask[5]);
     mask[9] = MUL3(mask[2]) ^ mask[3] ^ mask[4] ^ MUL2(mask[5]);
-    
-    
-	Mask_KeyExpansion(MK, RK);
+    Mask_KeyExpansion(MK, RK);
+    //trigger_high();
+	
     Mask_ENC(pt, RK, CT);
     pt[0] = CT[0];
     pt[1] = CT[1];
